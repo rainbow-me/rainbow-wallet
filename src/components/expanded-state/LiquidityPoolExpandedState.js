@@ -233,25 +233,12 @@ const LiquidityPoolExpandedState = () => {
                 weight="bold"
               />
             )}
-            {tokenAddresses?.length > 0 && (
-              <DepositActionButton
-                symbol={tokenNames}
-                token1Address={tokenAddresses[0]}
-                token2Address={tokenAddresses[1]}
-                weight="bold"
-              />
-            )}
+            <DepositActionButton asset={asset} weight="bold" />
           </SheetActionButtonRow>
         </Fragment>
       ) : (
         <SheetActionButtonRow>
-          <DepositActionButton
-            fullWidth
-            symbol={tokenNames}
-            token1Address={tokenAddresses[0]}
-            token2Address={tokenAddresses[1]}
-            weight="heavy"
-          />
+          <DepositActionButton asset={asset} fullWidth weight="heavy" />
         </SheetActionButtonRow>
       )}
       <CarouselWrapper>

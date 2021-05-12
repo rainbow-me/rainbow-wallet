@@ -6,7 +6,7 @@ import { darkModeThemeColors } from '../../styles/colors';
 import { HoldToAuthorizeButton } from '../buttons';
 import { Centered } from '../layout';
 import { useTheme } from '@rainbow-me/context';
-import { ExchangeModalTypes } from '@rainbow-me/helpers';
+import { ExchangeModalTypes } from '@rainbow-me/entities';
 import {
   useColorForAsset,
   useGas,
@@ -31,6 +31,20 @@ const Container = styled(Centered)`
   ${padding(5, paddingHorizontal, 0)};
   width: 100%;
 `;
+const getLabel = type => {
+  switch (type) {
+    case ExchangeModalTypes.depositUniswap:
+      return 'Add Liquidity';
+    case ExchangeModalTypes.depositCompound:
+      return 'Hold to Deposit';
+    case ExchangeModalTypes.withdrawUniswap:
+      return 'Remove Liquidity';
+    case ExchangeModalTypes.withdrawCompound:
+      return 'Hold to Withdraw ';
+    default:
+      return 'Hold to Swap';
+  }
+};
 
 export default function ConfirmExchangeButton({
   disabled,
@@ -94,14 +108,7 @@ export default function ConfirmExchangeButton({
     };
   }, [colorForAsset, colors, isDarkMode, isSwapDetailsRoute]);
 
-  let label = '';
-  if (type === ExchangeModalTypes.deposit) {
-    label = 'Hold to Deposit';
-  } else if (type === ExchangeModalTypes.swap) {
-    label = 'Hold to Swap';
-  } else if (type === ExchangeModalTypes.withdrawal) {
-    label = 'Hold to Withdraw';
-  }
+  let label = getLabel(type);
 
   if (!isSufficientBalance) {
     label = 'Insufficient Funds';

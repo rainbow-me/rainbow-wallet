@@ -10,8 +10,9 @@ import AddTokenSheet from '../screens/AddTokenSheet';
 import AvatarBuilder from '../screens/AvatarBuilder';
 import BackupSheet from '../screens/BackupSheet';
 import ChangeWalletSheet from '../screens/ChangeWalletSheet';
+import CompoundDepositModal from '../screens/CompoundDepositModal';
+import CompoundWithdrawModal from '../screens/CompoundWithdrawModal';
 import ConnectedDappsSheet from '../screens/ConnectedDappsSheet';
-import DepositModal from '../screens/DepositModal';
 import ExpandedAssetSheet from '../screens/ExpandedAssetSheet';
 import ImportSeedPhraseSheet from '../screens/ImportSeedPhraseSheet';
 import ModalScreen from '../screens/ModalScreen';
@@ -22,10 +23,10 @@ import SendSheet from '../screens/SendSheet';
 import SettingsModal from '../screens/SettingsModal';
 import SpeedUpAndCancelSheet from '../screens/SpeedUpAndCancelSheet';
 import TransactionConfirmationScreen from '../screens/TransactionConfirmationScreen';
+import UniswapDepositModal from '../screens/UniswapDepositModal';
 import WalletConnectApprovalSheet from '../screens/WalletConnectApprovalSheet';
 import WalletConnectRedirectSheet from '../screens/WalletConnectRedirectSheet';
 import WelcomeScreen from '../screens/WelcomeScreen';
-import WithdrawModal from '../screens/WithdrawModal';
 import { SwipeNavigator } from './SwipeNavigator';
 import {
   addTokenSheetConfig,
@@ -344,13 +345,18 @@ function NativeStackNavigator() {
         }}
       />
       <NativeStack.Screen
-        component={WithdrawModal}
+        component={CompoundWithdrawModal}
         name={Routes.SAVINGS_WITHDRAW_MODAL}
         options={nativeStackDefaultConfigWithoutStatusBar}
       />
       <NativeStack.Screen
-        component={DepositModal}
+        component={CompoundDepositModal}
         name={Routes.SAVINGS_DEPOSIT_MODAL}
+        options={nativeStackDefaultConfigWithoutStatusBar}
+      />
+      <NativeStack.Screen
+        component={UniswapDepositModal}
+        name={Routes.UNISWAP_DEPOSIT_MODAL}
         options={nativeStackDefaultConfigWithoutStatusBar}
       />
       <NativeStack.Screen

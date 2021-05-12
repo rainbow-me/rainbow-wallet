@@ -9,10 +9,8 @@ import { delayNext } from './useMagicAutofocus';
 import useSwapCurrencies from './useSwapCurrencies';
 import useTimeout from './useTimeout';
 import useUniswapCalls from './useUniswapCalls';
-import {
-  CurrencySelectionTypes,
-  ExchangeModalTypes,
-} from '@rainbow-me/helpers';
+import { ExchangeModalTypes } from '@rainbow-me/entities';
+import { CurrencySelectionTypes } from '@rainbow-me/helpers';
 import { useNavigation } from '@rainbow-me/navigation';
 import {
   multicallAddListeners,
@@ -20,11 +18,11 @@ import {
 } from '@rainbow-me/redux/multicall';
 import {
   flipSwapCurrencies,
-  updateSwapDepositCurrency,
   updateSwapInputCurrency,
   updateSwapOutputCurrency,
 } from '@rainbow-me/redux/swap';
 import Routes from '@rainbow-me/routes';
+import { greaterThan } from '@rainbow-me/utilities';
 import { ethereumUtils } from '@rainbow-me/utils';
 
 const { currentlyFocusedInput, focusTextInput } = TextInput.State;
@@ -36,6 +34,7 @@ export default function useSwapCurrencyHandlers({
   outputFieldRef,
   title,
   type,
+  typeSpecificParams,
 }) {
   const dispatch = useDispatch();
   const { allAssets } = useAccountAssets();
@@ -46,13 +45,13 @@ export default function useSwapCurrencyHandlers({
   } = useRoute();
 
   const { defaultInputItemInWallet, defaultOutputItem } = useMemo(() => {
-    if (type === ExchangeModalTypes.withdrawal) {
+    if (type === ExchangeModalTypes.withdrawCompound) {
       return {
         defaultInputItemInWallet: defaultInputAsset,
         defaultOutputItem: null,
       };
     }
-    if (type === ExchangeModalTypes.deposit) {
+    if (type === ExchangeModalTypes.depositCompound) {
       // if the deposit asset exists in wallet, then set it as default input
       let defaultInputItemInWallet = ethereumUtils.getAsset(
         allAssets,
@@ -65,10 +64,40 @@ export default function useSwapCurrencyHandlers({
         defaultInputItemInWallet = ethereumUtils.getAsset(allAssets);
         defaultOutputItem = defaultInputAsset;
       }
-      dispatch(updateSwapDepositCurrency(defaultInputAsset));
       return {
         defaultInputItemInWallet,
         defaultOutputItem,
+      };
+    }
+    if (type === ExchangeModalTypes.depositUniswap) {
+      const uniswapPair =
+        typeSpecificParams[ExchangeModalTypes.depositUniswap].uniswapPair;
+      let defaultInputItemInWallet = ethereumUtils.getAsset(allAssets);
+
+      let tokenA = ethereumUtils.getAsset(
+        allAssets,
+        uniswapPair.tokens[0].address
+      );
+      let tokenB = ethereumUtils.getAsset(
+        allAssets,
+        uniswapPair.tokens[1].address
+      );
+      if (tokenA && tokenB) {
+        defaultInputItemInWallet = greaterThan(
+          tokenA.balance.amount,
+          tokenB.balance.amount
+        )
+          ? tokenA
+          : tokenB;
+      } else if (tokenA) {
+        defaultInputItemInWallet = tokenA;
+      } else if (tokenB) {
+        defaultInputItemInWallet = tokenB;
+      }
+
+      return {
+        defaultInputItemInWallet,
+        defaultOutputItem: defaultOutputAsset ?? null,
       };
     }
     if (type === ExchangeModalTypes.swap) {

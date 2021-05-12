@@ -38,10 +38,12 @@ export {
   wyreSupportedCountries,
   WYRE_SUPPORTED_COUNTRIES_ISO,
 } from './wyre';
-
-export const ETH_ICON_URL = 'https://s3.amazonaws.com/token-icons/eth.png';
+export { ZAP_IN_ABI, ZAP_IN_ADDRESS } from './zapper';
 
 export const ETH_COINGECKO_ID = 'ethereum';
+export const ETH_ICON_URL = 'https://s3.amazonaws.com/token-icons/eth.png';
+export const RAINBOW_ADDRESS = '0x7a3d05c70581bd345fe117c06e45f9669205384f';
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const ETH_ADDRESS = 'eth';
 export const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 export const CDAI_CONTRACT = '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643';

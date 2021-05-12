@@ -2,33 +2,45 @@ import { Logger } from '@ethersproject/logger';
 import { Wallet } from '@ethersproject/wallet';
 import analytics from '@segment/analytics-react-native';
 import { captureException } from '@sentry/react-native';
-import { Trade } from '@uniswap/sdk';
+import { ChainId, Trade } from '@uniswap/sdk';
 import { join, map } from 'lodash';
-import { depositCompound, swap, unlock, withdrawCompound } from './actions';
+import {
+  depositCompound,
+  depositUniswap,
+  swap,
+  unlock,
+  withdrawCompound,
+} from './actions';
 import {
   createSwapAndDepositCompoundRap,
   estimateSwapAndDepositCompound,
 } from './swapAndDepositCompound';
+import {
+  createDepositUniswapRap,
+  estimateUnlockAndDepositUniswap,
+} from './unlockAndDepositUniswap';
 import { createUnlockAndSwapRap, estimateUnlockAndSwap } from './unlockAndSwap';
 import {
   createWithdrawFromCompoundRap,
   estimateWithdrawFromCompound,
 } from './withdrawFromCompound';
-import { Asset } from '@rainbow-me/entities';
-import ExchangeModalTypes from '@rainbow-me/helpers/exchangeModalTypes';
+import { Asset, ExchangeModalType } from '@rainbow-me/entities';
 
 import logger from 'logger';
 
 export enum RapActionType {
   depositCompound = 'depositCompound',
+  depositUniswap = 'depositUniswap',
   swap = 'swap',
   unlock = 'unlock',
   withdrawCompound = 'withdrawCompound',
+  withdrawUniswap = 'withdrawUniswap',
 }
 
 export interface RapActionParameters {
   amount?: string | null;
   assetToUnlock?: Asset;
+  chainId?: ChainId;
   contractAddress?: string;
   inputAmount?: string | null;
   outputAmount?: string | null;
@@ -74,19 +86,23 @@ const NOOP = () => null;
 
 export const RapActionTypes = {
   depositCompound: 'depositCompound' as RapActionType,
+  depositUniswap: 'depositUniswap' as RapActionType,
   swap: 'swap' as RapActionType,
   unlock: 'unlock' as RapActionType,
   withdrawCompound: 'withdrawCompound' as RapActionType,
+  withdrawUniswap: 'withdrawUniswap' as RapActionType,
 };
 
 const createRapByType = (
-  type: string,
+  type: ExchangeModalType,
   swapParameters: SwapActionParameters
 ) => {
   switch (type) {
-    case ExchangeModalTypes.deposit:
+    case ExchangeModalType.depositCompound:
       return createSwapAndDepositCompoundRap(swapParameters);
-    case ExchangeModalTypes.withdrawal:
+    case ExchangeModalType.depositUniswap:
+      return createDepositUniswapRap(swapParameters);
+    case ExchangeModalType.withdrawCompound:
       return createWithdrawFromCompoundRap(swapParameters);
     default:
       return createUnlockAndSwapRap(swapParameters);
@@ -94,15 +110,17 @@ const createRapByType = (
 };
 
 export const getRapEstimationByType = (
-  type: string,
+  type: ExchangeModalType,
   swapParameters: SwapActionParameters
 ) => {
   switch (type) {
-    case ExchangeModalTypes.deposit:
+    case ExchangeModalType.depositCompound:
       return estimateSwapAndDepositCompound(swapParameters);
-    case ExchangeModalTypes.swap:
+    case ExchangeModalType.depositUniswap:
+      return estimateUnlockAndDepositUniswap(swapParameters);
+    case ExchangeModalType.swap:
       return estimateUnlockAndSwap(swapParameters);
-    case ExchangeModalTypes.withdrawal:
+    case ExchangeModalType.withdrawCompound:
       return estimateWithdrawFromCompound();
     default:
       return null;
@@ -117,6 +135,8 @@ const findActionByType = (type: RapActionType) => {
       return swap;
     case RapActionTypes.depositCompound:
       return depositCompound;
+    case RapActionTypes.depositUniswap:
+      return depositUniswap;
     case RapActionTypes.withdrawCompound:
       return withdrawCompound;
     default:
@@ -182,7 +202,7 @@ const executeAction = async (
 
 export const executeRap = async (
   wallet: Wallet,
-  type: string,
+  type: ExchangeModalType,
   swapParameters: SwapActionParameters,
   callback: (success?: boolean, errorMessage?: string | null) => void
 ) => {

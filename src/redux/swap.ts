@@ -1,7 +1,10 @@
 import { AnyAction } from 'redux';
 import { fetchAssetPrices } from './explorer';
-import { UniswapCurrency } from '@rainbow-me/entities';
-import { ExchangeModalTypes } from '@rainbow-me/helpers';
+import {
+  ExchangeModalType,
+  UniswapCurrency,
+  UniswapPair,
+} from '@rainbow-me/entities';
 import { AppDispatch, AppGetState } from '@rainbow-me/redux/store';
 import { convertAmountFromNativeValue } from '@rainbow-me/utilities';
 
@@ -16,24 +19,36 @@ export enum SwapModalField {
   output = 'outputAmount',
 }
 
-export interface TypeSpecificParameters {
+export interface WithdrawCompoundParameters {
   cTokenBalance: string;
   supplyBalanceUnderlying: string;
 }
 
+export interface DepositCompoundParameters {
+  depositCurrency: UniswapCurrency;
+}
+
+export interface DepositUniswapParameters {
+  uniswapPair: UniswapPair;
+}
+
+export interface TypeSpecificParameters {
+  [ExchangeModalType.depositCompound]?: DepositCompoundParameters;
+  [ExchangeModalType.depositUniswap]?: DepositUniswapParameters;
+  [ExchangeModalType.withdrawCompound]?: WithdrawCompoundParameters;
+}
+
 interface SwapState {
-  depositCurrency: UniswapCurrency | null;
   inputCurrency: UniswapCurrency | null;
   independentField: SwapModalField;
   independentValue: string | null;
   slippageInBips: number;
-  type: string;
+  type: ExchangeModalType;
   typeSpecificParameters?: TypeSpecificParameters | null;
   outputCurrency: UniswapCurrency | null;
 }
 
 // -- Constants --------------------------------------- //
-const SWAP_UPDATE_DEPOSIT_CURRENCY = 'swap/SWAP_UPDATE_DEPOSIT_CURRENCY';
 const SWAP_UPDATE_SLIPPAGE = 'swap/SWAP_UPDATE_SLIPPAGE';
 const SWAP_UPDATE_INPUT_AMOUNT = 'swap/SWAP_UPDATE_INPUT_AMOUNT';
 const SWAP_UPDATE_NATIVE_AMOUNT = 'swap/SWAP_UPDATE_NATIVE_AMOUNT';
@@ -46,7 +61,7 @@ const SWAP_CLEAR_STATE = 'swap/SWAP_CLEAR_STATE';
 
 // -- Actions ---------------------------------------- //
 export const updateSwapTypeDetails = (
-  type: string,
+  type: ExchangeModalType,
   typeSpecificParameters?: TypeSpecificParameters | null
 ) => (dispatch: AppDispatch) => {
   dispatch({
@@ -94,23 +109,17 @@ export const updateSwapOutputAmount = (value: string | null) => (
   });
 };
 
-export const updateSwapDepositCurrency = (
-  newDepositCurrency: UniswapCurrency | null
-) => (dispatch: AppDispatch) => {
-  dispatch({ payload: newDepositCurrency, type: SWAP_UPDATE_DEPOSIT_CURRENCY });
-};
-
 export const updateSwapInputCurrency = (
   newInputCurrency: UniswapCurrency | null
 ) => (dispatch: AppDispatch, getState: AppGetState) => {
   const {
-    depositCurrency,
     independentField,
     outputCurrency,
     type,
+    typeSpecificParameters,
   } = getState().swap;
   if (
-    type === ExchangeModalTypes.swap &&
+    type === ExchangeModalType.swap &&
     newInputCurrency?.address === outputCurrency?.address
   ) {
     dispatch(flipSwapCurrencies());
@@ -124,7 +133,10 @@ export const updateSwapInputCurrency = (
     }
   }
 
-  if (type === ExchangeModalTypes.deposit) {
+  if (type === ExchangeModalType.depositCompound) {
+    const depositCurrency =
+      typeSpecificParameters?.[ExchangeModalType.depositCompound]
+        ?.depositCurrency;
     if (newInputCurrency?.address === depositCurrency?.address) {
       dispatch(updateSwapOutputCurrency(null));
     } else {
@@ -192,13 +204,12 @@ export const swapClearState = () => (dispatch: AppDispatch) => {
 
 // -- Reducer ----------------------------------------- //
 const INITIAL_STATE: SwapState = {
-  depositCurrency: null,
   independentField: SwapModalField.input,
   independentValue: null,
   inputCurrency: null,
   outputCurrency: null,
   slippageInBips: 50,
-  type: ExchangeModalTypes.swap,
+  type: ExchangeModalType.swap,
   typeSpecificParameters: null,
 };
 
@@ -232,11 +243,6 @@ export default (state = INITIAL_STATE, action: AnyAction) => {
         ...state,
         independentField: SwapModalField.output,
         independentValue: action.payload,
-      };
-    case SWAP_UPDATE_DEPOSIT_CURRENCY:
-      return {
-        ...state,
-        depositCurrency: action.payload,
       };
     case SWAP_UPDATE_OUTPUT_CURRENCY:
       return {

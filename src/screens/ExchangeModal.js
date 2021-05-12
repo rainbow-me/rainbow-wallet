@@ -27,7 +27,8 @@ import {
 import { FloatingPanel } from '../components/floating-panels';
 import { GasSpeedButton } from '../components/gas';
 import { Centered, KeyboardFixedOpenLayout } from '../components/layout';
-import { ExchangeModalTypes, isKeyboardOpen } from '@rainbow-me/helpers';
+import { ExchangeModalTypes } from '@rainbow-me/entities';
+import { isKeyboardOpen } from '@rainbow-me/helpers';
 import {
   useAccountSettings,
   useBlockPolling,
@@ -68,12 +69,23 @@ const InnerWrapper = styled(Centered).attrs({
   background-color: ${({ theme: { colors } }) => colors.transparent};
 `;
 
-const getInputHeaderTitle = (type, defaultInputAsset) => {
+const getInputHeaderTitle = (type, typeSpecificParams) => {
   switch (type) {
-    case ExchangeModalTypes.deposit:
-      return 'Deposit';
-    case ExchangeModalTypes.withdrawal:
-      return `Withdraw ${defaultInputAsset.symbol}`;
+    case ExchangeModalTypes.depositCompound:
+    case ExchangeModalTypes.depositUniswap: {
+      const poolName =
+        typeSpecificParams?.[ExchangeModalTypes.depositUniswap]?.uniswapPair
+          ?.tokenNames;
+      return poolName ? `Deposit to ${poolName}` : 'Deposit';
+    }
+    case ExchangeModalTypes.withdrawCompound: {
+      const tokenName =
+        typeSpecificParams?.[ExchangeModalTypes.withdrawCompound]?.underlying
+          ?.symbol;
+      return tokenName ? `Withdraw ${tokenName}` : 'Withdraw';
+    }
+    case ExchangeModalTypes.withdrawUniswap:
+      return 'Withdraw';
     default:
       return 'Swap';
   }
@@ -81,11 +93,28 @@ const getInputHeaderTitle = (type, defaultInputAsset) => {
 
 const getShowOutputField = type => {
   switch (type) {
-    case ExchangeModalTypes.deposit:
-    case ExchangeModalTypes.withdrawal:
+    case ExchangeModalTypes.depositCompound:
+    case ExchangeModalTypes.depositUniswap:
+    case ExchangeModalTypes.withdrawCompound:
+    case ExchangeModalTypes.withdrawUniswap:
       return false;
     default:
       return true;
+  }
+};
+
+const getDefaultGasLimit = type => {
+  switch (type) {
+    case ExchangeModalTypes.depositCompound:
+      return ethUnits.basic_deposit_compound;
+    case ExchangeModalTypes.withdrawCompound:
+      return ethUnits.basic_withdraw_compound;
+    case ExchangeModalTypes.depositUniswap:
+      return ethUnits.basic_deposit_uniswap;
+    case ExchangeModalTypes.withdrawUniswap:
+      return ethUnits.basic_withdraw_uniswap;
+    default:
+      return ethUnits.basic_swap;
   }
 };
 
@@ -102,7 +131,7 @@ export default function ExchangeModal({
     dispatch(updateSwapTypeDetails(type, typeSpecificParams));
   }, [dispatch, type, typeSpecificParams]);
 
-  const title = getInputHeaderTitle(type, defaultInputAsset);
+  const title = getInputHeaderTitle(type, typeSpecificParams);
   const showOutputField = getShowOutputField(type);
 
   const {
@@ -112,15 +141,7 @@ export default function ExchangeModal({
     addListener,
   } = useNavigation();
 
-  const isDeposit = type === ExchangeModalTypes.deposit;
-  const isWithdrawal = type === ExchangeModalTypes.withdrawal;
-  const isSavings = isDeposit || isWithdrawal;
-
-  const defaultGasLimit = isDeposit
-    ? ethUnits.basic_deposit
-    : isWithdrawal
-    ? ethUnits.basic_withdrawal
-    : ethUnits.basic_swap;
+  const defaultGasLimit = getDefaultGasLimit(type);
 
   const {
     startPollingGasPrices,
@@ -167,6 +188,7 @@ export default function ExchangeModal({
     outputFieldRef,
     title,
     type,
+    typeSpecificParams,
   });
 
   const {
@@ -221,9 +243,9 @@ export default function ExchangeModal({
     try {
       if (
         ((type === ExchangeModalTypes.swap ||
-          type === ExchangeModalTypes.deposit) &&
+          type === ExchangeModalTypes.depositCompound) &&
           !(inputCurrency && outputCurrency)) ||
-        type === ExchangeModalTypes.withdraw
+        type === ExchangeModalTypes.withdrawCompound
       ) {
         return;
       }
@@ -410,9 +432,10 @@ export default function ExchangeModal({
     type,
   ]);
 
-  const showConfirmButton = isSavings
-    ? !!inputCurrency
-    : !!inputCurrency && !!outputCurrency;
+  const showConfirmButton =
+    type === ExchangeModalTypes.swap
+      ? !!inputCurrency && !!outputCurrency
+      : !!inputCurrency;
 
   return (
     <Wrapper>
@@ -427,7 +450,9 @@ export default function ExchangeModal({
             {showOutputField && <ExchangeNotch />}
             <ExchangeHeader testID={testID} title={title} />
             <ExchangeInputField
-              disableInputCurrencySelection={isWithdrawal}
+              disableInputCurrencySelection={
+                type === ExchangeModalTypes.withdrawCompound
+              }
               inputAmount={inputAmountDisplay}
               inputCurrencyAddress={inputCurrency?.address}
               inputCurrencySymbol={inputCurrency?.symbol}
@@ -455,7 +480,7 @@ export default function ExchangeModal({
               />
             )}
           </FloatingPanel>
-          {isDeposit && (
+          {type === ExchangeModalTypes.depositCompound && (
             <DepositInfo
               amount={(inputAmount > 0 && outputAmount) || null}
               asset={outputCurrency}
@@ -467,7 +492,7 @@ export default function ExchangeModal({
               testID="deposit-info-button"
             />
           )}
-          {!isSavings && showConfirmButton && (
+          {type === ExchangeModalTypes.swap && showConfirmButton && (
             <ExchangeDetailsRow
               isHighPriceImpact={isHighPriceImpact}
               onFlipCurrencies={flipCurrencies}
@@ -476,7 +501,6 @@ export default function ExchangeModal({
               priceImpactNativeAmount={priceImpactNativeAmount}
               priceImpactPercentDisplay={priceImpactPercentDisplay}
               showDetailsButton={!!tradeDetails}
-              type={type}
             />
           )}
           {showConfirmButton && (
