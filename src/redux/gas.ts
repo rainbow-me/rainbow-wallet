@@ -16,7 +16,7 @@ import {
   getEstimatedTimeForGasPrice,
 } from '@rainbow-me/handlers/gasPrices';
 import {
-  defaultGasPriceFormat,
+  formatGasPrice,
   parseGasPrices,
   parseTxFees,
 } from '@rainbow-me/parsers';
@@ -173,7 +173,7 @@ export const gasUpdateCustomValues = (price: string) => async (
 
   const estimateInMinutes = await getEstimatedTimeForGasPrice(price);
   const newGasPrices = { ...gasPrices };
-  newGasPrices[GasSpeedOption.CUSTOM] = defaultGasPriceFormat(
+  newGasPrices[GasSpeedOption.CUSTOM] = formatGasPrice(
     GasSpeedOption.CUSTOM,
     estimateInMinutes,
     price
