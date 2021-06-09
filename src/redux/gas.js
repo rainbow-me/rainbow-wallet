@@ -1,6 +1,7 @@
 import analytics from '@segment/analytics-react-native';
 import { captureException } from '@sentry/react-native';
 import { get, isEmpty } from 'lodash';
+import { GasSpeedOptions } from '@rainbow-me/entities';
 import {
   etherscanGetGasEstimates,
   etherscanGetGasPrices,
@@ -14,10 +15,8 @@ import {
 } from '@rainbow-me/parsers';
 import { ethUnits } from '@rainbow-me/references';
 import { fromWei, greaterThanOrEqualTo } from '@rainbow-me/utilities';
-import { ethereumUtils, gasUtils } from '@rainbow-me/utils';
+import { ethereumUtils } from '@rainbow-me/utils';
 import logger from 'logger';
-
-const { CUSTOM, NORMAL } = gasUtils;
 
 // -- Constants ------------------------------------------------------------- //
 const GAS_MULTIPLIER = 1.101;
@@ -85,9 +84,10 @@ export const gasPricesStartPolling = () => async (dispatch, getState) => {
         }
 
         let gasPrices = parseGasPrices(adjustedGasPrices, source);
-        if (existingGasPrice[CUSTOM] !== null) {
+        if (existingGasPrice[GasSpeedOptions.CUSTOM] !== null) {
           // Preserve custom values while updating prices
-          gasPrices[CUSTOM] = existingGasPrice[CUSTOM];
+          gasPrices[GasSpeedOptions.CUSTOM] =
+            existingGasPrice[GasSpeedOptions.CUSTOM];
         }
 
         dispatch({
@@ -148,8 +148,8 @@ export const gasUpdateCustomValues = price => async (dispatch, getState) => {
 
   const estimateInMinutes = await getEstimatedTimeForGasPrice(price);
   const newGasPrices = { ...gasPrices };
-  newGasPrices[CUSTOM] = defaultGasPriceFormat(
-    CUSTOM,
+  newGasPrices[GasSpeedOptions.CUSTOM] = defaultGasPriceFormat(
+    GasSpeedOptions.CUSTOM,
     estimateInMinutes,
     price,
     true
@@ -218,10 +218,10 @@ const getSelectedGasPrice = (
   let txFee = txFees[selectedGasPriceOption];
   // If no custom price is set we default to FAST
   if (
-    selectedGasPriceOption === gasUtils.CUSTOM &&
+    selectedGasPriceOption === GasSpeedOptions.CUSTOM &&
     get(txFee, 'txFee.value.amount') === 'NaN'
   ) {
-    txFee = txFees[gasUtils.FAST];
+    txFee = txFees[GasSpeedOptions.FAST];
   }
   const ethAsset = ethereumUtils.getAsset(assets);
   const balanceAmount = get(ethAsset, 'balance.amount', 0);
@@ -260,7 +260,7 @@ const INITIAL_STATE = {
   gasPrices: {},
   isSufficientGas: undefined,
   selectedGasPrice: {},
-  selectedGasPriceOption: NORMAL,
+  selectedGasPriceOption: GasSpeedOptions.NORMAL,
   txFees: {},
 };
 
