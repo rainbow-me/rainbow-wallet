@@ -14,6 +14,7 @@ export {
 export { default as emojis } from './emojis.json';
 export { default as erc20ABI } from './erc20-abi.json';
 export { default as ethUnits } from './ethereum-units.json';
+export { default as timeUnits } from './time-units.json';
 export { DPI_ADDRESS } from './indexes';
 export { default as migratedTokens } from './migratedTokens.json';
 export { default as supportedNativeCurrencies } from './native-currencies.json';

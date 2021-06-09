@@ -1,0 +1,162 @@
+import { get, map, zipObject } from 'lodash';
+import {
+  GasPrice,
+  GasPrices,
+  GasSpeedOption,
+  TxFee,
+} from '@rainbow-me/entities';
+import { getMinimalTimeUnitStringForMs } from '@rainbow-me/helpers/time';
+import { ethUnits, timeUnits } from '@rainbow-me/references';
+import {
+  BigNumberish,
+  convertRawAmountToBalance,
+  convertRawAmountToNativeDisplay,
+  divide,
+  multiply,
+} from '@rainbow-me/utilities';
+import { gasUtils } from '@rainbow-me/utils';
+
+const { GasSpeedOrder } = gasUtils;
+
+interface EtherscanPrices {
+  average: string;
+  avgWait: string | number;
+  fast: string;
+  fastWait: string | number;
+  safeLow: string;
+  safeLowWait: string | number;
+}
+
+interface EthGasStationPrices {
+  average: string | number;
+  avgWait: string | number;
+  fast: string | number;
+  fastWait: string | number;
+  fastest: string | number;
+  fastestWait: string | number;
+}
+
+const parseGasPricesEtherscan = (data: EtherscanPrices): GasPrices => ({
+  [GasSpeedOption.CUSTOM]: null,
+  [GasSpeedOption.FAST]: defaultGasPriceFormat(
+    GasSpeedOption.FAST,
+    data.fastWait,
+    data.fast
+  ),
+  [GasSpeedOption.NORMAL]: defaultGasPriceFormat(
+    GasSpeedOption.NORMAL,
+    data.avgWait,
+    data.average
+  ),
+  [GasSpeedOption.SLOW]: defaultGasPriceFormat(
+    GasSpeedOption.SLOW,
+    data.safeLowWait,
+    data.safeLow
+  ),
+});
+
+const parseGasPricesEthGasStation = (data: EthGasStationPrices): GasPrices => ({
+  [GasSpeedOption.CUSTOM]: null,
+  [GasSpeedOption.FAST]: defaultGasPriceFormat(
+    GasSpeedOption.FAST,
+    data.fastestWait,
+    divide(data.fastest, 10)
+  ),
+  [GasSpeedOption.NORMAL]: defaultGasPriceFormat(
+    GasSpeedOption.NORMAL,
+    data.fastWait,
+    divide(data.fast, 10)
+  ),
+  [GasSpeedOption.SLOW]: defaultGasPriceFormat(
+    GasSpeedOption.SLOW,
+    data.avgWait,
+    divide(data.average, 10)
+  ),
+});
+
+/**
+ * @desc parse ether gas prices
+ * @param {Object} data
+ * @param {Boolean} short - use short format or not
+ */
+export const parseGasPrices = (
+  data: EtherscanPrices | EthGasStationPrices,
+  source = 'etherscan'
+): GasPrices | null =>
+  !data
+    ? null
+    : source === 'etherscan'
+    ? parseGasPricesEtherscan(data as EtherscanPrices)
+    : parseGasPricesEthGasStation(data as EthGasStationPrices);
+
+export const defaultGasPriceFormat = (
+  option: GasSpeedOption,
+  timeWait: BigNumberish,
+  value: string
+): GasPrice => {
+  const timeAmount = multiply(timeWait, timeUnits.ms.minute);
+  const weiAmount = multiply(value, ethUnits.gwei);
+  return {
+    estimatedTime: {
+      amount: timeAmount,
+      display: getMinimalTimeUnitStringForMs(timeAmount),
+    },
+    option,
+    value: {
+      amount: weiAmount,
+      display: `${parseInt(value, 10)} Gwei`,
+    },
+  };
+};
+
+/**
+ * @desc parse ether gas prices with updated gas limit
+ * @param {Object} data
+ * @param {Object} prices
+ * @param {Number} gasLimit
+ */
+export const parseTxFees = (
+  gasPrices: GasPrices,
+  priceUnit: BigNumberish,
+  gasLimit: BigNumberish,
+  nativeCurrency: string
+): Record<string, Record<string, TxFee>> => {
+  const txFees = map(GasSpeedOrder, speed => {
+    const gasPrice = get(gasPrices, `${speed}.value.amount`);
+    return {
+      txFee: getTxFee(gasPrice, gasLimit, priceUnit, nativeCurrency),
+    };
+  });
+  return zipObject(GasSpeedOrder, txFees);
+};
+
+const getTxFee = (
+  gasPrice: BigNumberish,
+  gasLimit: BigNumberish,
+  priceUnit: BigNumberish,
+  nativeCurrency: string
+): TxFee => {
+  const amount = multiply(gasPrice, gasLimit);
+  return {
+    native: {
+      value: convertRawAmountToNativeDisplay(
+        amount,
+        18,
+        priceUnit,
+        nativeCurrency
+      ),
+    },
+    value: {
+      amount,
+      display: convertRawAmountToBalance(amount, {
+        decimals: 18,
+      }),
+    },
+  };
+};
+
+export const gweiToWei = (gweiAmount: BigNumberish): string =>
+  multiply(gweiAmount, ethUnits.gwei);
+
+export const weiToGwei = (weiAmount: BigNumberish): string =>
+  divide(weiAmount, ethUnits.gwei);
