@@ -9,7 +9,6 @@ import {
 } from '@rainbow-me/handlers/gasPrices';
 import {
   defaultGasPriceFormat,
-  getFallbackGasPrices,
   parseGasPrices,
   parseTxFees,
 } from '@rainbow-me/parsers';
@@ -23,37 +22,13 @@ const { CUSTOM, NORMAL } = gasUtils;
 // -- Constants ------------------------------------------------------------- //
 const GAS_MULTIPLIER = 1.101;
 const GAS_UPDATE_DEFAULT_GAS_LIMIT = 'gas/GAS_UPDATE_DEFAULT_GAS_LIMIT';
-const GAS_PRICES_DEFAULT = 'gas/GAS_PRICES_DEFAULT';
 const GAS_PRICES_SUCCESS = 'gas/GAS_PRICES_SUCCESS';
-const GAS_PRICES_FAILURE = 'gas/GAS_PRICES_FAILURE';
 
 const GAS_UPDATE_TX_FEE = 'gas/GAS_UPDATE_TX_FEE';
 const GAS_UPDATE_GAS_PRICE_OPTION = 'gas/GAS_UPDATE_GAS_PRICE_OPTION';
 
 // -- Actions --------------------------------------------------------------- //
 let gasPricesHandle = null;
-
-const getDefaultTxFees = () => (dispatch, getState) => {
-  const { defaultGasLimit } = getState().gas;
-  const { nativeCurrency } = getState().settings;
-  const fallbackGasPrices = getFallbackGasPrices();
-  const ethPriceUnit = ethereumUtils.getEthPriceUnit();
-  const txFees = parseTxFees(
-    fallbackGasPrices,
-    ethPriceUnit,
-    defaultGasLimit,
-    nativeCurrency
-  );
-  const selectedGasPrice = {
-    ...txFees[NORMAL],
-    ...fallbackGasPrices[NORMAL],
-  };
-  return {
-    fallbackGasPrices,
-    selectedGasPrice,
-    txFees,
-  };
-};
 
 export const updateGasPriceForSpeed = (speed, newPrice) => async (
   dispatch,
@@ -76,24 +51,6 @@ export const updateGasPriceForSpeed = (speed, newPrice) => async (
 };
 
 export const gasPricesStartPolling = () => async (dispatch, getState) => {
-  const { gasPrices } = getState().gas;
-
-  const { fallbackGasPrices, selectedGasPrice, txFees } = dispatch(
-    getDefaultTxFees()
-  );
-  // We only set the default if we don't have any price
-  // The previous price will be always more accurate than our default values!
-  if (isEmpty(gasPrices)) {
-    dispatch({
-      payload: {
-        gasPrices: fallbackGasPrices,
-        selectedGasPrice,
-        txFees,
-      },
-      type: GAS_PRICES_DEFAULT,
-    });
-  }
-
   const getGasPrices = () =>
     new Promise(async (fetchResolve, fetchReject) => {
       try {
@@ -144,10 +101,6 @@ export const gasPricesStartPolling = () => async (dispatch, getState) => {
       } catch (error) {
         captureException(new Error('all gas estimates failed'));
         logger.sentry('gas estimates error', error);
-        dispatch({
-          payload: fallbackGasPrices,
-          type: GAS_PRICES_FAILURE,
-        });
         fetchReject(error);
       }
     });
@@ -318,22 +271,10 @@ export default (state = INITIAL_STATE, action) => {
         ...state,
         defaultGasLimit: action.payload,
       };
-    case GAS_PRICES_DEFAULT:
-      return {
-        ...state,
-        gasPrices: action.payload.gasPrices,
-        selectedGasPrice: action.payload.selectedGasPrice,
-        txFees: action.payload.txFees,
-      };
     case GAS_PRICES_SUCCESS:
       return {
         ...state,
         gasPrices: action.payload.gasPrices,
-      };
-    case GAS_PRICES_FAILURE:
-      return {
-        ...state,
-        gasPrices: action.payload,
       };
     case GAS_UPDATE_TX_FEE:
       return {

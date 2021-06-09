@@ -60,6 +60,7 @@ export default function useGas() {
     },
     [dispatch]
   );
+
   const updateCustomValues = useCallback(
     (price, estimate) => dispatch(gasUpdateCustomValues(price, estimate)),
     [dispatch]
