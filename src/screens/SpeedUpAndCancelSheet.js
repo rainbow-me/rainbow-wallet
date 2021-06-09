@@ -25,7 +25,11 @@ import {
   SlackSheet,
 } from '../components/sheet';
 import { Emoji, Text } from '../components/text';
-import { TransactionStatusTypes, TransactionTypes } from '@rainbow-me/entities';
+import {
+  GasSpeedOption,
+  TransactionStatusTypes,
+  TransactionTypes,
+} from '@rainbow-me/entities';
 import { getTransaction, toHex } from '@rainbow-me/handlers/web3';
 import {
   useAccountSettings,
@@ -119,7 +123,7 @@ export default function SpeedUpAndCancelSheet() {
   const keyboardHeight = useKeyboardHeight();
   const {
     gasPrices,
-    updateGasPriceOption,
+    updateGasSpeedOption,
     selectedGasPrice,
     startPollingGasPrices,
     stopPollingGasPrices,
@@ -271,7 +275,7 @@ export default function SpeedUpAndCancelSheet() {
         }
         startPollingGasPrices();
         // Always default to fast
-        updateGasPriceOption('fast');
+        updateGasSpeedOption(GasSpeedOption.fast);
       }
     }, 300);
 
@@ -287,7 +291,7 @@ export default function SpeedUpAndCancelSheet() {
     tx.gasPrice,
     tx.hash,
     type,
-    updateGasPriceOption,
+    updateGasSpeedOption,
   ]);
 
   useEffect(() => {

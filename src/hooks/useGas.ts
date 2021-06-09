@@ -52,7 +52,7 @@ export default function useGas() {
     [dispatch]
   );
 
-  const updateGasPriceOption = useCallback(
+  const updateGasSpeedOption = useCallback(
     (option: GasSpeedOption) => dispatch(gasUpdateGasSpeedOption(option)),
     [dispatch]
   );
@@ -75,7 +75,7 @@ export default function useGas() {
     stopPollingGasPrices,
     updateCustomValues,
     updateDefaultGasLimit,
-    updateGasPriceOption,
+    updateGasSpeedOption,
     updateTxFee,
     ...gasData,
   };
