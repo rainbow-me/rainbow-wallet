@@ -1,5 +1,7 @@
 import { get, map, zipObject } from 'lodash';
 import {
+  EtherscanPrices,
+  EthGasStationPrices,
   GasPrice,
   GasPrices,
   GasSpeedOption,
@@ -17,24 +19,6 @@ import {
 import { gasUtils } from '@rainbow-me/utils';
 
 const { GasSpeedOrder } = gasUtils;
-
-interface EtherscanPrices {
-  average: string;
-  avgWait: string | number;
-  fast: string;
-  fastWait: string | number;
-  safeLow: string;
-  safeLowWait: string | number;
-}
-
-interface EthGasStationPrices {
-  average: string | number;
-  avgWait: string | number;
-  fast: string | number;
-  fastWait: string | number;
-  fastest: string | number;
-  fastestWait: string | number;
-}
 
 const parseGasPricesEtherscan = (data: EtherscanPrices): GasPrices => ({
   [GasSpeedOption.CUSTOM]: null,
