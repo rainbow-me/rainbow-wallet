@@ -15,6 +15,7 @@ import {
   convertRawAmountToNativeDisplay,
   divide,
   multiply,
+  toFixedDecimals,
 } from '@rainbow-me/utilities';
 import { gasUtils } from '@rainbow-me/utils';
 
@@ -76,10 +77,11 @@ export const parseGasPrices = (
 export const formatGasPrice = (
   option: GasSpeedOption,
   timeWait: BigNumberish,
-  value: string
+  value: string | number
 ): GasPrice => {
   const timeAmount = multiply(timeWait, timeUnits.ms.minute);
   const weiAmount = multiply(value, ethUnits.gwei);
+  const gweiAmount = toFixedDecimals(value, 0);
   return {
     estimatedTime: {
       amount: timeAmount,
@@ -88,7 +90,7 @@ export const formatGasPrice = (
     option,
     value: {
       amount: weiAmount,
-      display: `${parseInt(value, 10)} Gwei`,
+      display: `${gweiAmount} Gwei`,
     },
   };
 };
