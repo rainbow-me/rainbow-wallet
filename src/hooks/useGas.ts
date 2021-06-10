@@ -58,7 +58,7 @@ export default function useGas() {
   );
 
   const updateTxFee = useCallback(
-    (newGasLimit: string | number, overrideGasOption: GasSpeedOption) => {
+    (newGasLimit: string | number, overrideGasOption?: GasSpeedOption) => {
       dispatch(gasUpdateTxFee(newGasLimit, overrideGasOption));
     },
     [dispatch]

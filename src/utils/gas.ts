@@ -1,6 +1,6 @@
 import { GasSpeedOption } from '@rainbow-me/entities';
 
-const GasSpeedOrder = [
+const GasSpeedOrder: GasSpeedOption[] = [
   GasSpeedOption.SLOW,
   GasSpeedOption.NORMAL,
   GasSpeedOption.FAST,
