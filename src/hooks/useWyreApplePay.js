@@ -1,8 +1,10 @@
 import analytics from '@segment/analytics-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Alert } from '../components/alerts';
 import {
+  // createUser,
+  // getOnboardingLink,
   getOrderId,
   getReferenceId,
   getWalletOrderQuotation,
@@ -23,6 +25,7 @@ import logger from 'logger';
 
 export default function useWyreApplePay() {
   const dispatch = useDispatch();
+  const wyreUserId = useSelector(({ addCash: { wyreUserId } }) => wyreUserId);
 
   useEffect(() => {
     dispatch(addCashResetCurrentOrder());
@@ -57,11 +60,19 @@ export default function useWyreApplePay() {
       const referenceInfo = {
         referenceId: getReferenceId(accountAddress),
       };
+
+      /////////////////////////////////
+      // const wyreUserId = await createUser(network);
+      // const onboardingLink = await getOnboardingLink(wyreUserId, network);
+      // return;
+      /////////////////////////////////
+
       const { reservation: reservationId } = await reserveWyreOrder(
         value,
         currency,
         accountAddress,
-        network
+        network,
+        wyreUserId
       );
 
       if (!reservationId) {
@@ -163,7 +174,7 @@ export default function useWyreApplePay() {
         });
       }
     },
-    [accountAddress, dispatch, handlePaymentCallback, network]
+    [accountAddress, dispatch, handlePaymentCallback, network, wyreUserId]
   );
 
   return {

@@ -120,6 +120,50 @@ export const showApplePayRequest = async (
   }
 };
 
+const createWyreConfig = network => {
+  const wyreAuthToken =
+    network === NetworkTypes.mainnet ? WYRE_TOKEN : WYRE_TOKEN_TEST;
+  return {
+    headers: {
+      Authorization: `Bearer ${wyreAuthToken}`,
+    },
+  };
+};
+
+export const createUser = async network => {
+  const data = {
+    blockchains: ['ETH'],
+    fields: {},
+    immediate: false,
+    scopes: ['DEBIT_CARD_L2'],
+  };
+
+  try {
+    const baseUrl = getBaseUrl(network);
+    const config = createWyreConfig(network);
+    const response = await wyreApi.post(`${baseUrl}/v3/users`, data, config);
+    return response?.data?.id;
+  } catch (error) {
+    logger.sentry('Apple Pay - error creating user', error);
+    return null;
+  }
+};
+
+export const getOnboardingLink = async (wyreUserId, network) => {
+  try {
+    const baseUrl = getBaseUrl(network);
+    const config = createWyreConfig(network);
+    const response = await wyreApi.get(
+      `${baseUrl}/v3/sumsub/users/${wyreUserId}`,
+      config
+    );
+    return response?.data?.verificationLinkUrl;
+  } catch (error) {
+    logger.sentry('Apple Pay - error getting onboarding link', error);
+    return null;
+  }
+};
+
 export const getWalletOrderQuotation = async (
   amount,
   destCurrency,
@@ -140,13 +184,7 @@ export const getWalletOrderQuotation = async (
   };
   const baseUrl = getBaseUrl(network);
   try {
-    const wyreAuthToken =
-      network === NetworkTypes.mainnet ? WYRE_TOKEN : WYRE_TOKEN_TEST;
-    const config = {
-      headers: {
-        Authorization: `Bearer ${wyreAuthToken}`,
-      },
-    };
+    const config = createWyreConfig(network);
     const response = await wyreApi.post(
       `${baseUrl}/v3/orders/quote/partner`,
       data,
@@ -169,15 +207,18 @@ export const reserveWyreOrder = async (
   destCurrency,
   accountAddress,
   network,
+  wyreUserId = null,
   paymentMethod = null
 ) => {
   const partnerId =
     network === NetworkTypes.mainnet ? WYRE_ACCOUNT_ID : WYRE_ACCOUNT_ID_TEST;
   const dest = `ethereum:${accountAddress}`;
+  const owner = wyreUserId ? `user:${wyreUserId}` : undefined;
   const data = {
     amount,
     dest,
     destCurrency,
+    owner,
     referrerAccountId: partnerId,
     sourceCurrency: SOURCE_CURRENCY_USD,
   };
@@ -186,13 +227,7 @@ export const reserveWyreOrder = async (
   }
   const baseUrl = getBaseUrl(network);
   try {
-    const wyreAuthToken =
-      network === NetworkTypes.mainnet ? WYRE_TOKEN : WYRE_TOKEN_TEST;
-    const config = {
-      headers: {
-        Authorization: `Bearer ${wyreAuthToken}`,
-      },
-    };
+    const config = createWyreConfig(network);
     const response = await wyreApi.post(
       `${baseUrl}/v3/orders/reserve`,
       data,
