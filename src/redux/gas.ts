@@ -277,20 +277,17 @@ const getSelectedGasPrice = (
 ) => {
   let txFee = txFees[gasSpeedOption];
   // If no custom price is set we default to FAST
-  if (
-    gasSpeedOption === GasSpeedOption.CUSTOM &&
-    txFee?.txFee?.value?.amount === 'NaN'
-  ) {
+  if (!txFee && gasSpeedOption === GasSpeedOption.CUSTOM) {
     txFee = txFees[GasSpeedOption.FAST];
   }
   const ethAsset = ethereumUtils.getAsset(assets);
   const balanceAmount = ethAsset?.balance?.amount ?? 0;
-  const txFeeAmount = fromWei(txFee?.txFee?.value?.amount ?? 0);
+  const txFeeAmount = fromWei(txFee?.value?.amount ?? 0);
   const isSufficientGas = greaterThanOrEqualTo(balanceAmount, txFeeAmount);
   return {
     isSufficientGas,
     selectedGasPrice: {
-      ...txFee,
+      txFee,
       ...gasPrices[gasSpeedOption],
     },
   };
