@@ -26,7 +26,7 @@ import {
 } from '../components/sheet';
 import { Emoji, Text } from '../components/text';
 import {
-  GasSpeedOption,
+  GasSpeedOptions,
   TransactionStatusTypes,
   TransactionTypes,
 } from '@rainbow-me/entities';
@@ -123,7 +123,7 @@ export default function SpeedUpAndCancelSheet() {
   const keyboardHeight = useKeyboardHeight();
   const {
     gasPrices,
-    updateGasSpeedOption,
+    updateGasSpeedOptions,
     selectedGasPrice,
     startPollingGasPrices,
     stopPollingGasPrices,
@@ -275,7 +275,7 @@ export default function SpeedUpAndCancelSheet() {
         }
         startPollingGasPrices();
         // Always default to fast
-        updateGasSpeedOption(GasSpeedOption.fast);
+        updateGasSpeedOptions(GasSpeedOptions.FAST);
       }
     }, 300);
 
@@ -291,7 +291,7 @@ export default function SpeedUpAndCancelSheet() {
     tx.gasPrice,
     tx.hash,
     type,
-    updateGasSpeedOption,
+    updateGasSpeedOptions,
   ]);
 
   useEffect(() => {
@@ -299,7 +299,7 @@ export default function SpeedUpAndCancelSheet() {
       calculatingGasLimit.current = true;
       if (Number(gweiToWei(minGasPrice)) > Number(gasPrices.fast.value)) {
         dispatch(
-          updateGasPriceForSpeed(GasSpeedOption.fast, gweiToWei(minGasPrice))
+          updateGasPriceForSpeed(GasSpeedOptions.FAST, gweiToWei(minGasPrice))
         );
       }
       const gasLimitForNewTx =
@@ -459,7 +459,7 @@ export default function SpeedUpAndCancelSheet() {
                       minGasPrice={minGasPrice}
                       onCustomGasBlur={hideKeyboard}
                       onCustomGasFocus={showKeyboard}
-                      options={[GasSpeedOption.fast, GasSpeedOption.custom]}
+                      options={[GasSpeedOptions.FAST, GasSpeedOptions.CUSTOM]}
                       theme={isDarkMode ? 'dark' : 'light'}
                       type="transaction"
                     />
