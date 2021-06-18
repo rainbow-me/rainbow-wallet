@@ -3,7 +3,7 @@ import analytics from '@segment/analytics-react-native';
 import { captureException } from '@sentry/react-native';
 import BigNumber from 'bignumber.js';
 import lang from 'i18n-js';
-import { isEmpty, isNil, omit } from 'lodash';
+import { isNil, omit } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -344,11 +344,7 @@ export default function TransactionConfirmationScreen() {
   }, [params, updateTxFee]);
 
   useEffect(() => {
-    if (
-      !isEmpty(gasPrices) &&
-      !calculatingGasLimit.current &&
-      !isMessageRequest
-    ) {
+    if (gasPrices && !calculatingGasLimit.current && !isMessageRequest) {
       InteractionManager.runAfterInteractions(() => {
         calculateGasLimit();
       });
