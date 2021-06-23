@@ -107,7 +107,7 @@ export default function ConfirmExchangeButton({
     label = 'Insufficient Funds';
   } else if (!isSufficientLiquidity) {
     label = 'Insufficient Liquidity';
-  } else if (gasPrices && !isSufficientGas) {
+  } else if (!!gasPrices && !isSufficientGas) {
     label = 'Insufficient ETH';
   } else if (isHighPriceImpact) {
     label = isSwapDetailsRoute ? 'Swap Anyway' : '􀕹 View Details';
@@ -121,6 +121,7 @@ export default function ConfirmExchangeButton({
     disabled ||
     !doneLoadingReserves ||
     !isSufficientBalance ||
+    !gasPrices ||
     !isSufficientGas ||
     !isSufficientLiquidity;
 

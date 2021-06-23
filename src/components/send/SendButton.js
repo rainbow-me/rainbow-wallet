@@ -4,6 +4,7 @@ import { useColorForAsset } from '@rainbow-me/hooks';
 
 export default function SendButton({
   assetAmount,
+  hasGasPrices,
   isAuthorizing,
   isNft,
   isSufficientBalance,
@@ -33,12 +34,15 @@ export default function SendButton({
   let disabled = true;
   let label = 'Enter an Amount';
 
-  if (!isZeroAssetAmount && !isSufficientGas) {
+  if (!isZeroAssetAmount && hasGasPrices && !isSufficientGas) {
     disabled = true;
     label = 'Insufficient ETH';
   } else if (!isZeroAssetAmount && !isSufficientBalance) {
     disabled = true;
     label = 'Insufficient Funds';
+  } else if (!hasGasPrices) {
+    disabled = true;
+    label = 'Fetching Details...';
   } else if (!isZeroAssetAmount) {
     disabled = false;
     label = 'Hold to Send';
