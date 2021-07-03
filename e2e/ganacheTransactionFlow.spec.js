@@ -142,6 +142,11 @@ describe('Ganache Transaction Flow', () => {
     await Helpers.tap('send-savings-cSAI');
     await Helpers.typeText('selected-asset-field-input', '1.69', true);
     await Helpers.tapAndLongPress('Hold to Send');
+    if (device.getPlatform() === 'android') {
+      await Helpers.tapAlertWithButton('Slow');
+      await Helpers.delay(4000);
+      await Helpers.authenticatePin('1234');
+    }
     await Helpers.swipe('profile-screen', 'left', 'slow');
   });
 
@@ -162,6 +167,11 @@ describe('Ganache Transaction Flow', () => {
     await Helpers.tap('CryptoKitties-family-header');
     await Helpers.tapByText('Arun Cattybinky');
     await Helpers.tapAndLongPress('Hold to Send');
+    if (device.getPlatform() === 'android') {
+      await Helpers.tapAlertWithButton('Slow');
+      await Helpers.delay(4000);
+      await Helpers.authenticatePin('1234');
+    }
     await Helpers.swipe('profile-screen', 'left', 'slow');
   });
 
@@ -171,6 +181,11 @@ describe('Ganache Transaction Flow', () => {
     await Helpers.tap('send-asset-BAT');
     await Helpers.typeText('selected-asset-field-input', '1.02', true);
     await Helpers.tapAndLongPress('Hold to Send');
+    if (device.getPlatform() === 'android') {
+      await Helpers.tapAlertWithButton('Slow');
+      await Helpers.delay(4000);
+      await Helpers.authenticatePin('1234');
+    }
     await Helpers.swipe('profile-screen', 'left', 'slow');
   });
 
@@ -180,6 +195,11 @@ describe('Ganache Transaction Flow', () => {
     await Helpers.tap('send-asset-ETH');
     await Helpers.typeText('selected-asset-field-input', '0.003', true);
     await Helpers.tapAndLongPress('Hold to Send');
+    if (device.getPlatform() === 'android') {
+      await Helpers.tapAlertWithButton('Slow');
+      await Helpers.delay(4000);
+      await Helpers.authenticatePin('1234');
+    }
     await Helpers.swipe('profile-screen', 'left', 'slow');
   });
 
@@ -384,7 +404,9 @@ describe('Ganache Transaction Flow', () => {
 
   afterAll(async () => {
     // Reset the app state
-    await device.clearKeychain();
-    await exec('kill $(lsof -t -i:7545)');
+    if (device.getPlatform() === 'ios') {
+      await device.clearKeychain();
+      await exec('kill $(lsof -t -i:7545)');
+    }
   });
 });

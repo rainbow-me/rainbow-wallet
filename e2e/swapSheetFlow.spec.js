@@ -133,6 +133,7 @@ describe('Swap Sheet Interaction Flow', () => {
     );
     if (device.getPlatform() === 'android') {
       await device.pressBack();
+      await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
     }
@@ -156,6 +157,7 @@ describe('Swap Sheet Interaction Flow', () => {
       'ETH'
     );
     if (device.getPlatform() === 'android') {
+      await device.pressBack();
       await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
@@ -181,11 +183,16 @@ describe('Swap Sheet Interaction Flow', () => {
   });
 
   it('Should display Enter an Amount Button once input & output currencies are selected', async () => {
-    await Helpers.checkForElementByLabel('Enter an Amount');
+    if (device.getPlatform() === 'android') {
+      await Helpers.checkIfElementByTextIsVisible('Enter an Amount');
+    } else {
+      await Helpers.checkForElementByLabel('Enter an Amount');
+    }
   });
 
   it('Should update native input & output after input field change', async () => {
     if (device.getPlatform() === 'android') {
+      await device.pressBack();
       await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
@@ -223,6 +230,7 @@ describe('Swap Sheet Interaction Flow', () => {
   it('Should update input & native input after output field change', async () => {
     if (device.getPlatform() === 'android') {
       await device.pressBack();
+      await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
     }
@@ -239,18 +247,27 @@ describe('Swap Sheet Interaction Flow', () => {
   });
 
   it('Should show Hold to Swap Button & Swap Info Button on completion of all input fields', async () => {
-    await Helpers.checkIfVisible('Hold to Swap');
+    if (device.getPlatform() === 'android') {
+      await Helpers.checkIfElementByTextIsVisible('Hold to Swap');
+    } else {
+      await Helpers.checkForElementByLabel('Hold to Swap');
+    }
     await Helpers.checkIfVisible('exchange-details-button');
   });
 
   it('Should show Swap Details State on Swap Info Button press', async () => {
     await Helpers.waitAndTap('exchange-details-button');
     await Helpers.checkIfVisible('swap-details-state');
-    await Helpers.swipe('swap-details-state', 'down', 'slow');
+    if (device.getPlatform() === 'android') {
+      await device.pressBack();
+    } else {
+      await Helpers.swipe('swap-details-state-container', 'down', 'slow');
+    }
   });
 
   it('Should show Insufficient Funds on input greater than balance', async () => {
     if (device.getPlatform() === 'android') {
+      await device.pressBack();
       await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
@@ -260,11 +277,16 @@ describe('Swap Sheet Interaction Flow', () => {
     await Helpers.waitAndTap('exchange-modal-output-selection-button');
     await Helpers.typeText('currency-select-search-input', 'ZRX', false);
     await Helpers.waitAndTap('currency-select-list-exchange-coin-row-ZRX');
-    await Helpers.checkForElementByLabel('Insufficient Funds');
+    if (device.getPlatform() === 'android') {
+      await Helpers.checkIfElementByTextIsVisible('Insufficient Funds');
+    } else {
+      await Helpers.checkForElementByLabel('Insufficient Funds');
+    }
   });
 
   it('Should prepend 0. to input field on typing .', async () => {
     if (device.getPlatform() === 'android') {
+      await device.pressBack();
       await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');
@@ -296,6 +318,7 @@ describe('Swap Sheet Interaction Flow', () => {
 
   it('Should display Gas Button on Normal by default', async () => {
     if (device.getPlatform() === 'android') {
+      await device.pressBack();
       await device.pressBack();
     } else {
       await Helpers.swipe('exchange-modal-header', 'down', 'slow');

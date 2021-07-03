@@ -186,7 +186,7 @@ export default function ImportSeedPhraseSheet() {
               onPress={handlePressImportButton}
             >
               <Row>
-                {busy ? (
+                {busy && IS_TESTING !== 'true' ? (
                   <LoadingSpinner />
                 ) : (
                   <Text align="center" color="whiteLabel" weight="bold">

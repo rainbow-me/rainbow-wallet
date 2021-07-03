@@ -224,6 +224,12 @@ android {
             keyAlias 'rainbow-alias'
             keyPassword pass
         }
+        bitrise {
+            storeFile file('../keystores/rainbow-key.keystore')
+            storePassword System.getenv("BITRISEIO_ANDROID_KEYSTORE_PASSWORD")
+            keyAlias 'rainbow-alias'
+            keyPassword System.getenv("BITRISEIO_ANDROID_KEYSTORE_PRIVATE_KEY_PASSWORD")
+    }
     }
 
     buildTypes {
@@ -233,12 +239,28 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://facebook.github.io/react-native/docs/signed-apk-android.
-            signingConfig signingConfigs.release
+            
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             // Detox-specific additions to pro-guard
             proguardFile "${rootProject.projectDir}/../node_modules/detox/android/detox/proguard-rules-app.pro"
         }
+    }
+
+    flavorDimensions "environment"
+    productFlavors {
+          local {
+            getIsDefault().set(true)
+            dimension "environment"
+            signingConfig signingConfigs.release
+
+        }
+        bitrise {
+            dimension "environment"
+            signingConfig signingConfigs.bitrise
+
+        }
+      
     }
 
     packagingOptions {

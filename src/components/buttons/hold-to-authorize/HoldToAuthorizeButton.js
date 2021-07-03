@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Fragment, PureComponent } from 'react';
 import { ActivityIndicator, Keyboard } from 'react-native';
+import { IS_TESTING } from 'react-native-dotenv';
 import {
   LongPressGestureHandler,
   State,
@@ -257,7 +258,9 @@ class HoldToAuthorizeButton extends PureComponent {
                         animatedValue={this.longPressProgress}
                       />
                     )}
-                    {android && isAuthorizing && <LoadingSpinner />}
+                    {android && !IS_TESTING && isAuthorizing && (
+                      <LoadingSpinner />
+                    )}
                     <Label
                       label={isAuthorizing ? 'Authorizing' : label}
                       showIcon={showBiometryIcon && !isAuthorizing}

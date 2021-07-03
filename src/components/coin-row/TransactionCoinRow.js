@@ -1,4 +1,4 @@
-import { compact, get, toLower } from 'lodash';
+import { capitalize, compact, get, toLower } from 'lodash';
 import React, { useCallback } from 'react';
 import { css } from 'styled-components';
 import { useTheme } from '../../context/ThemeContext';
@@ -206,6 +206,7 @@ export default function TransactionCoinRow({ item, ...props }) {
               },
             }
           : {})}
+        testID={`${capitalize(item.status)}-${item.name}`}
         topRowRender={TopRow}
       />
     </ButtonPressAnimation>
