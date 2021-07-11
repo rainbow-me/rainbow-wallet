@@ -1,6 +1,12 @@
 import analytics from '@segment/analytics-react-native';
 import { captureException } from '@sentry/react-native';
-import { get, isEmpty } from 'lodash';
+import {
+  Asset,
+  GasPrices,
+  GasSpeedOption,
+  SelectedGasPrice,
+  TxFees,
+} from '@rainbow-me/entities';
 import {
   etherscanGetGasEstimates,
   etherscanGetGasPrices,
@@ -8,92 +14,101 @@ import {
   getEstimatedTimeForGasPrice,
 } from '@rainbow-me/handlers/gasPrices';
 import {
-  defaultGasPriceFormat,
-  getFallbackGasPrices,
+  formatGasPrice,
   parseGasPrices,
   parseTxFees,
 } from '@rainbow-me/parsers';
+import { AppDispatch, AppGetState } from '@rainbow-me/redux/store';
 import { ethUnits } from '@rainbow-me/references';
 import { fromWei, greaterThanOrEqualTo } from '@rainbow-me/utilities';
-import { ethereumUtils, gasUtils } from '@rainbow-me/utils';
+import { ethereumUtils } from '@rainbow-me/utils';
 import logger from 'logger';
 
-const { CUSTOM, NORMAL } = gasUtils;
+interface GasState {
+  defaultGasLimit: number;
+  gasLimit: string | number | null;
+  gasPrices: GasPrices | null;
+  gasSpeedOption: GasSpeedOption;
+  isSufficientGas: boolean;
+  selectedGasPrice: SelectedGasPrice | {};
+  txFees: TxFees | {};
+}
+
+interface GasUpdateDefaultGasLimitAction {
+  type: typeof GAS_UPDATE_DEFAULT_GAS_LIMIT;
+  payload: GasState['defaultGasLimit'];
+}
+
+interface GasPricesSuccessAction {
+  type: typeof GAS_PRICES_SUCCESS;
+  payload: GasState['gasPrices'];
+}
+
+interface GasUpdateTxFeeAction {
+  type: typeof GAS_UPDATE_TX_FEE;
+  payload: {
+    gasLimit: GasState['gasLimit'];
+    isSufficientGas: GasState['isSufficientGas'];
+    selectedGasPrice: GasState['selectedGasPrice'];
+    txFees: GasState['txFees'];
+  };
+}
+
+interface GasUpdateGasPriceOptionAction {
+  type: typeof GAS_UPDATE_GAS_PRICE_OPTION;
+  payload: {
+    gasSpeedOption: GasState['gasSpeedOption'];
+    isSufficientGas: GasState['isSufficientGas'];
+    selectedGasPrice: GasState['selectedGasPrice'];
+  };
+}
+
+export type GasActionTypes =
+  | GasUpdateDefaultGasLimitAction
+  | GasPricesSuccessAction
+  | GasPricesSuccessAction
+  | GasUpdateTxFeeAction
+  | GasUpdateGasPriceOptionAction;
 
 // -- Constants ------------------------------------------------------------- //
-const GAS_MULTIPLIER = 1.101;
 const GAS_UPDATE_DEFAULT_GAS_LIMIT = 'gas/GAS_UPDATE_DEFAULT_GAS_LIMIT';
-const GAS_PRICES_DEFAULT = 'gas/GAS_PRICES_DEFAULT';
 const GAS_PRICES_SUCCESS = 'gas/GAS_PRICES_SUCCESS';
-const GAS_PRICES_FAILURE = 'gas/GAS_PRICES_FAILURE';
 
 const GAS_UPDATE_TX_FEE = 'gas/GAS_UPDATE_TX_FEE';
 const GAS_UPDATE_GAS_PRICE_OPTION = 'gas/GAS_UPDATE_GAS_PRICE_OPTION';
 
 // -- Actions --------------------------------------------------------------- //
-let gasPricesHandle = null;
+let gasPricesHandle: number | null = null;
 
-const getDefaultTxFees = () => (dispatch, getState) => {
-  const { defaultGasLimit } = getState().gas;
-  const { nativeCurrency } = getState().settings;
-  const fallbackGasPrices = getFallbackGasPrices();
-  const ethPriceUnit = ethereumUtils.getEthPriceUnit();
-  const txFees = parseTxFees(
-    fallbackGasPrices,
-    ethPriceUnit,
-    defaultGasLimit,
-    nativeCurrency
-  );
-  const selectedGasPrice = {
-    ...txFees[NORMAL],
-    ...fallbackGasPrices[NORMAL],
-  };
-  return {
-    fallbackGasPrices,
-    selectedGasPrice,
-    txFees,
-  };
-};
-
-export const updateGasPriceForSpeed = (speed, newPrice) => async (
-  dispatch,
-  getState
-) => {
+export const updateGasPriceForSpeed = (
+  speed: GasSpeedOption,
+  newPrice: string
+) => async (dispatch: AppDispatch, getState: AppGetState) => {
   const { gasPrices } = getState().gas;
 
-  const newGasPrices = { ...gasPrices };
-  newGasPrices[speed].value = {
-    amount: newPrice,
-    display: `${newPrice} Gwei`,
-  };
-
-  dispatch({
-    payload: {
-      gasPrices,
-    },
-    type: GAS_PRICES_SUCCESS,
-  });
-};
-
-export const gasPricesStartPolling = () => async (dispatch, getState) => {
-  const { gasPrices } = getState().gas;
-
-  const { fallbackGasPrices, selectedGasPrice, txFees } = dispatch(
-    getDefaultTxFees()
-  );
-  // We only set the default if we don't have any price
-  // The previous price will be always more accurate than our default values!
-  if (isEmpty(gasPrices)) {
-    dispatch({
-      payload: {
-        gasPrices: fallbackGasPrices,
-        selectedGasPrice,
-        txFees,
-      },
-      type: GAS_PRICES_DEFAULT,
-    });
+  if (gasPrices) {
+    const newGasPrices: GasPrices = { ...gasPrices };
+    const speedGasPrice = newGasPrices[speed];
+    if (speedGasPrice) {
+      newGasPrices[speed] = {
+        ...speedGasPrice,
+        value: {
+          amount: newPrice,
+          display: `${newPrice} Gwei`,
+        },
+      };
+      dispatch({
+        payload: newGasPrices,
+        type: GAS_PRICES_SUCCESS,
+      });
+    }
   }
+};
 
+export const gasPricesStartPolling = () => async (
+  dispatch: AppDispatch,
+  getState: AppGetState
+) => {
   const getGasPrices = () =>
     new Promise(async (fetchResolve, fetchReject) => {
       try {
@@ -123,31 +138,28 @@ export const gasPricesStartPolling = () => async (dispatch, getState) => {
           const {
             data: ethGasStationPrices,
           } = await ethGasStationGetGasPrices();
-          // Only bumping for ETHGasStation
-          adjustedGasPrices = bumpGasPrices(ethGasStationPrices);
+          adjustedGasPrices = ethGasStationPrices;
         }
 
         let gasPrices = parseGasPrices(adjustedGasPrices, source);
-        if (existingGasPrice[CUSTOM] !== null) {
+        if (gasPrices && existingGasPrice?.[GasSpeedOption.CUSTOM]) {
           // Preserve custom values while updating prices
-          gasPrices[CUSTOM] = existingGasPrice[CUSTOM];
+          gasPrices[GasSpeedOption.CUSTOM] =
+            existingGasPrice[GasSpeedOption.CUSTOM];
         }
 
-        dispatch({
-          payload: {
-            gasPrices,
-          },
-          type: GAS_PRICES_SUCCESS,
-        });
-
-        fetchResolve(true);
+        if (gasPrices) {
+          dispatch({
+            payload: gasPrices,
+            type: GAS_PRICES_SUCCESS,
+          });
+          fetchResolve(true);
+        } else {
+          fetchReject(new Error('Both gas price sources failed'));
+        }
       } catch (error) {
         captureException(new Error('all gas estimates failed'));
         logger.sentry('gas estimates error', error);
-        dispatch({
-          payload: fallbackGasPrices,
-          type: GAS_PRICES_FAILURE,
-        });
         fetchReject(error);
       }
     });
@@ -166,55 +178,55 @@ export const gasPricesStartPolling = () => async (dispatch, getState) => {
   watchGasPrices();
 };
 
-export const gasUpdateGasPriceOption = newGasPriceOption => (
-  dispatch,
-  getState
+export const gasUpdateGasSpeedOption = (newGasSpeedOption: GasSpeedOption) => (
+  dispatch: AppDispatch,
+  getState: AppGetState
 ) => {
   const { gasPrices, txFees } = getState().gas;
-  if (isEmpty(gasPrices)) return;
+  if (!gasPrices) return;
   const { assets } = getState().data;
   const results = getSelectedGasPrice(
     assets,
     gasPrices,
-    txFees,
-    newGasPriceOption
+    txFees as TxFees,
+    newGasSpeedOption
   );
 
   dispatch({
     payload: {
       ...results,
-      selectedGasPriceOption: newGasPriceOption,
+      gasSpeedOption: newGasSpeedOption,
     },
     type: GAS_UPDATE_GAS_PRICE_OPTION,
   });
-  analytics.track('Updated Gas Price', { gasPriceOption: newGasPriceOption });
+  analytics.track('Updated Gas Speed', { gasSpeedOption: newGasSpeedOption });
 };
 
-export const gasUpdateCustomValues = price => async (dispatch, getState) => {
+export const gasUpdateCustomValues = (price: string) => async (
+  dispatch: AppDispatch,
+  getState: AppGetState
+) => {
   const { gasPrices, gasLimit } = getState().gas;
-
   const estimateInMinutes = await getEstimatedTimeForGasPrice(price);
-  const newGasPrices = { ...gasPrices };
-  newGasPrices[CUSTOM] = defaultGasPriceFormat(
-    CUSTOM,
-    estimateInMinutes,
-    price,
-    true
-  );
+  if (gasPrices) {
+    const newGasPrices = { ...gasPrices };
+    newGasPrices[GasSpeedOption.CUSTOM] = formatGasPrice(
+      GasSpeedOption.CUSTOM,
+      estimateInMinutes,
+      price
+    );
+    await dispatch({
+      payload: newGasPrices,
+      type: GAS_PRICES_SUCCESS,
+    });
 
-  await dispatch({
-    payload: {
-      gasPrices: newGasPrices,
-    },
-    type: GAS_PRICES_SUCCESS,
-  });
-
-  dispatch(gasUpdateTxFee(gasLimit));
+    dispatch(gasUpdateTxFee(gasLimit));
+  }
 };
 
 export const gasUpdateDefaultGasLimit = (
   defaultGasLimit = ethUnits.basic_tx
-) => dispatch => {
+) => (dispatch: AppDispatch) => {
   dispatch({
     payload: defaultGasLimit,
     type: GAS_UPDATE_DEFAULT_GAS_LIMIT,
@@ -222,14 +234,14 @@ export const gasUpdateDefaultGasLimit = (
   dispatch(gasUpdateTxFee(defaultGasLimit));
 };
 
-export const gasUpdateTxFee = (gasLimit, overrideGasOption) => (
-  dispatch,
-  getState
-) => {
-  const { defaultGasLimit, gasPrices, selectedGasPriceOption } = getState().gas;
+export const gasUpdateTxFee = (
+  gasLimit: string | number | null,
+  overrideGasOption?: GasSpeedOption
+) => (dispatch: AppDispatch, getState: AppGetState) => {
+  const { defaultGasLimit, gasPrices, gasSpeedOption } = getState().gas;
   const _gasLimit = gasLimit || defaultGasLimit;
-  const _selectedGasPriceOption = overrideGasOption || selectedGasPriceOption;
-  if (isEmpty(gasPrices)) return;
+  const _newGasSpeedOption = overrideGasOption || gasSpeedOption;
+  if (!gasPrices) return;
   const { assets } = getState().data;
   const { nativeCurrency } = getState().settings;
   const ethPriceUnit = ethereumUtils.getEthPriceUnit();
@@ -244,12 +256,13 @@ export const gasUpdateTxFee = (gasLimit, overrideGasOption) => (
     assets,
     gasPrices,
     txFees,
-    _selectedGasPriceOption
+    _newGasSpeedOption
   );
+
   dispatch({
     payload: {
       ...results,
-      gasLimit,
+      gasLimit: _gasLimit,
       txFees,
     },
     type: GAS_UPDATE_TX_FEE,
@@ -257,43 +270,27 @@ export const gasUpdateTxFee = (gasLimit, overrideGasOption) => (
 };
 
 const getSelectedGasPrice = (
-  assets,
-  gasPrices,
-  txFees,
-  selectedGasPriceOption
+  assets: Asset[],
+  gasPrices: GasPrices,
+  txFees: TxFees,
+  gasSpeedOption: GasSpeedOption
 ) => {
-  let txFee = txFees[selectedGasPriceOption];
+  let txFee = txFees[gasSpeedOption];
   // If no custom price is set we default to FAST
-  if (
-    selectedGasPriceOption === gasUtils.CUSTOM &&
-    get(txFee, 'txFee.value.amount') === 'NaN'
-  ) {
-    txFee = txFees[gasUtils.FAST];
+  if (!txFee && gasSpeedOption === GasSpeedOption.CUSTOM) {
+    txFee = txFees[GasSpeedOption.FAST];
   }
   const ethAsset = ethereumUtils.getAsset(assets);
-  const balanceAmount = get(ethAsset, 'balance.amount', 0);
-  const txFeeAmount = fromWei(get(txFee, 'txFee.value.amount', 0));
+  const balanceAmount = ethAsset?.balance?.amount ?? 0;
+  const txFeeAmount = fromWei(txFee?.value?.amount ?? 0);
   const isSufficientGas = greaterThanOrEqualTo(balanceAmount, txFeeAmount);
   return {
     isSufficientGas,
     selectedGasPrice: {
-      ...txFee,
-      ...gasPrices[selectedGasPriceOption],
+      txFee,
+      ...gasPrices[gasSpeedOption],
     },
   };
-};
-
-const bumpGasPrices = data => {
-  const processedData = { ...data };
-  const gasPricesKeys = ['average', 'fast', 'fastest', 'safeLow'];
-  Object.keys(processedData).forEach(key => {
-    if (gasPricesKeys.indexOf(key) !== -1) {
-      processedData[key] = (
-        parseFloat(processedData[key]) * GAS_MULTIPLIER
-      ).toFixed(2);
-    }
-  });
-  return processedData;
 };
 
 export const gasPricesStopPolling = () => () => {
@@ -301,36 +298,24 @@ export const gasPricesStopPolling = () => () => {
 };
 
 // -- Reducer --------------------------------------------------------------- //
-const INITIAL_STATE = {
+const INITIAL_STATE: GasState = {
   defaultGasLimit: ethUnits.basic_tx,
   gasLimit: null,
-  gasPrices: {},
-  isSufficientGas: undefined,
+  gasPrices: null,
+  gasSpeedOption: GasSpeedOption.NORMAL,
+  isSufficientGas: false,
   selectedGasPrice: {},
-  selectedGasPriceOption: NORMAL,
   txFees: {},
 };
 
-export default (state = INITIAL_STATE, action) => {
+export default (state = INITIAL_STATE, action: GasActionTypes) => {
   switch (action.type) {
     case GAS_UPDATE_DEFAULT_GAS_LIMIT:
       return {
         ...state,
         defaultGasLimit: action.payload,
       };
-    case GAS_PRICES_DEFAULT:
-      return {
-        ...state,
-        gasPrices: action.payload.gasPrices,
-        selectedGasPrice: action.payload.selectedGasPrice,
-        txFees: action.payload.txFees,
-      };
     case GAS_PRICES_SUCCESS:
-      return {
-        ...state,
-        gasPrices: action.payload.gasPrices,
-      };
-    case GAS_PRICES_FAILURE:
       return {
         ...state,
         gasPrices: action.payload,
@@ -346,9 +331,9 @@ export default (state = INITIAL_STATE, action) => {
     case GAS_UPDATE_GAS_PRICE_OPTION:
       return {
         ...state,
+        gasSpeedOption: action.payload.gasSpeedOption,
         isSufficientGas: action.payload.isSufficientGas,
         selectedGasPrice: action.payload.selectedGasPrice,
-        selectedGasPriceOption: action.payload.selectedGasPriceOption,
       };
     default:
       return state;

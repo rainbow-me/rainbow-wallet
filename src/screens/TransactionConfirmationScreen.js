@@ -3,7 +3,7 @@ import analytics from '@segment/analytics-react-native';
 import { captureException } from '@sentry/react-native';
 import BigNumber from 'bignumber.js';
 import lang from 'i18n-js';
-import { isEmpty, isNil, omit } from 'lodash';
+import { isNil, omit } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -343,12 +343,10 @@ export default function TransactionConfirmationScreen() {
     }, 1000);
   }, [params, updateTxFee]);
 
+  const hasGasPrices = !!gasPrices;
+
   useEffect(() => {
-    if (
-      !isEmpty(gasPrices) &&
-      !calculatingGasLimit.current &&
-      !isMessageRequest
-    ) {
+    if (hasGasPrices && !calculatingGasLimit.current && !isMessageRequest) {
       InteractionManager.runAfterInteractions(() => {
         calculateGasLimit();
       });
@@ -356,7 +354,7 @@ export default function TransactionConfirmationScreen() {
   }, [
     calculateGasLimit,
     gasLimit,
-    gasPrices,
+    hasGasPrices,
     isMessageRequest,
     method,
     params,
@@ -369,7 +367,7 @@ export default function TransactionConfirmationScreen() {
       return;
     }
 
-    if (!isSufficientGas) {
+    if (hasGasPrices && !isSufficientGas) {
       setIsBalanceEnough(false);
       return;
     }
@@ -397,6 +395,7 @@ export default function TransactionConfirmationScreen() {
     setIsBalanceEnough(isEnough);
   }, [
     allAssets,
+    hasGasPrices,
     isBalanceEnough,
     isMessageRequest,
     isSufficientGas,
@@ -620,12 +619,10 @@ export default function TransactionConfirmationScreen() {
     const isMessage = isMessageRequest;
     // If we don't know about gas prices yet
     // set the button state to "loading"
-    if (!isMessage && !isBalanceEnough && isSufficientGas === undefined) {
+    if (!isMessage && !isBalanceEnough && !hasGasPrices) {
       ready = false;
     }
-    return !isMessage &&
-      isBalanceEnough === false &&
-      isSufficientGas !== undefined ? (
+    return !isMessage && !isBalanceEnough && hasGasPrices ? (
       <Column marginBottom={24} marginTop={19}>
         <SheetActionButton
           color={colors.transparent}
@@ -660,9 +657,9 @@ export default function TransactionConfirmationScreen() {
     );
   }, [
     colors,
+    hasGasPrices,
     isBalanceEnough,
     isMessageRequest,
-    isSufficientGas,
     onCancel,
     onPressSend,
   ]);
@@ -743,8 +740,7 @@ export default function TransactionConfirmationScreen() {
     (method === SIGN_TYPED_DATA ? 640 : android ? 595 : 575) +
     safeAreaInsetValues.bottom;
 
-  const balanceTooLow =
-    isBalanceEnough === false && isSufficientGas !== undefined;
+  const balanceTooLow = hasGasPrices && !isBalanceEnough;
 
   let sheetHeight =
     (isMessageRequest
@@ -867,9 +863,7 @@ export default function TransactionConfirmationScreen() {
                   balanceTooLow={balanceTooLow}
                   letterSpacing="roundedTight"
                 >
-                  {isBalanceEnough === false &&
-                    isSufficientGas !== undefined &&
-                    '􀇿 '}
+                  {!isBalanceEnough && hasGasPrices && '􀇿 '}
                   {balances[accountAddress]} ETH
                 </WalletText>
               </Column>

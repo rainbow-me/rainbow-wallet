@@ -7,9 +7,8 @@ export {
   parseAssetsNative,
 } from './accounts';
 export {
-  getFallbackGasPrices,
+  formatGasPrice,
   parseGasPrices,
-  defaultGasPriceFormat,
   parseTxFees,
   gweiToWei,
   weiToGwei,

@@ -1,4 +1,4 @@
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, pick } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -19,6 +19,7 @@ import { Input } from '../inputs';
 import { Column, Row } from '../layout';
 import { AnimatedNumber, Text } from '../text';
 import GasSpeedLabelPager from './GasSpeedLabelPager';
+import { GasSpeedOptions } from '@rainbow-me/entities';
 import ExchangeModalTypes from '@rainbow-me/helpers/exchangeModalTypes';
 import { useAccountSettings, useGas } from '@rainbow-me/hooks';
 import { useNavigation } from '@rainbow-me/navigation';
@@ -28,7 +29,7 @@ import { fonts, fontWithWidth, margin, padding } from '@rainbow-me/styles';
 import { darkModeThemeColors } from '@rainbow-me/styles/colors';
 import { gasUtils, magicMemo } from '@rainbow-me/utils';
 
-const { GasSpeedOrder, CUSTOM, FAST, NORMAL, SLOW } = gasUtils;
+const { GasSpeedOrder } = gasUtils;
 
 const Container = styled(Row).attrs({
   justify: 'space-between',
@@ -155,12 +156,11 @@ const GasSpeedButton = ({
   const { nativeCurrencySymbol, nativeCurrency } = useAccountSettings();
   const {
     gasPrices,
-    updateCustomValues,
-    isSufficientGas,
-    updateGasPriceOption,
+    gasSpeedOption,
     selectedGasPrice,
-    selectedGasPriceOption,
     txFees,
+    updateCustomValues,
+    updateGasSpeedOption,
   } = useGas();
 
   const gasPricesAvailable = useMemo(() => {
@@ -168,14 +168,10 @@ const GasSpeedButton = ({
       return gasPrices;
     }
 
-    const filteredGasPrices = {};
-    options.forEach(speed => {
-      filteredGasPrices[speed] = gasPrices[speed];
-    });
-    return filteredGasPrices;
+    return pick(gasPrices, options);
   }, [gasPrices, minGasPrice, options]);
 
-  const gasPrice = get(selectedGasPrice, 'txFee.native.value.amount');
+  const gasPrice = selectedGasPrice?.txFee?.native?.value?.amount;
   const customGasPriceTimeEstimateHandler = useRef(null);
   useEffect(() => {
     listener = () => {
@@ -195,10 +191,7 @@ const GasSpeedButton = ({
   const defaultCustomGasPrice = Math.round(
     weiToGwei(gasPricesAvailable?.fast?.value?.amount)
   );
-  const defaultCustomGasPriceUsd = get(
-    txFees?.fast,
-    'txFee.native.value.amount'
-  );
+  const defaultCustomGasPriceUsd = txFees?.fast?.native?.value?.amount;
   const defaultCustomGasConfirmationTime =
     gasPricesAvailable?.fast?.estimatedTime?.display;
 
@@ -213,19 +206,19 @@ const GasSpeedButton = ({
 
     setEstimatedTimeValue(estimatedTime[0] || 0);
     setEstimatedTimeUnit(estimatedTime[1] || 'min');
-  }, [selectedGasPrice, selectedGasPriceOption]);
+  }, [gasSpeedOption, selectedGasPrice]);
 
   const calculateCustomPriceEstimatedTime = useCallback(
     async price => {
       try {
         await updateCustomValues(price);
-        updateGasPriceOption(CUSTOM);
+        updateGasSpeedOption(GasSpeedOptions.CUSTOM);
       } catch (e) {
         setEstimatedTimeValue(0);
         setEstimatedTimeUnit('min');
       }
     },
-    [updateCustomValues, updateGasPriceOption]
+    [updateCustomValues, updateGasSpeedOption]
   );
 
   useEffect(() => {
@@ -255,14 +248,12 @@ const GasSpeedButton = ({
         size="lmedium"
         weight="bold"
       >
-        {isEmpty(gasPricesAvailable) ||
-        isEmpty(txFees) ||
-        typeof isSufficientGas === 'undefined'
+        {isEmpty(gasPricesAvailable) || isEmpty(txFees)
           ? 'Loading...'
           : animatedNumber}
       </Text>
     ),
-    [colors, gasPricesAvailable, isSufficientGas, theme, txFees]
+    [colors, gasPricesAvailable, theme, txFees]
   );
 
   const handlePress = useCallback(() => {
@@ -271,12 +262,12 @@ const GasSpeedButton = ({
     }
     LayoutAnimation.easeInEaseOut();
     const gasOptions = options || GasSpeedOrder;
-    const currentSpeedIndex = gasOptions?.indexOf(selectedGasPriceOption);
+    const currentSpeedIndex = gasOptions?.indexOf(gasSpeedOption);
     const nextSpeedIndex = (currentSpeedIndex + 1) % gasOptions?.length;
 
     const nextSpeed = gasOptions[nextSpeedIndex];
-    updateGasPriceOption(nextSpeed);
-  }, [inputFocused, options, selectedGasPriceOption, updateGasPriceOption]);
+    updateGasSpeedOption(nextSpeed);
+  }, [gasSpeedOption, inputFocused, options, updateGasSpeedOption]);
 
   const formatAnimatedGasPrice = useCallback(
     animatedPrice =>
@@ -287,20 +278,24 @@ const GasSpeedButton = ({
   const formatBottomRightLabel = useCallback(() => {
     const actionLabel = getActionLabel(type);
     const time = parseFloat(estimatedTimeValue || 0).toFixed(0);
-    const gasPriceGwei = get(selectedGasPrice, 'value.display');
+    const gasPriceGwei = selectedGasPrice?.value?.display;
     let timeSymbol = '~';
 
-    if (selectedGasPriceOption === CUSTOM) {
+    if (gasSpeedOption === GasSpeedOptions.CUSTOM) {
       if (!customGasPriceInput) {
         return `${formatAnimatedGasPrice(
           defaultCustomGasPriceUsd
         )} ~ ${defaultCustomGasConfirmationTime}`;
-      } else if (gasPricesAvailable[CUSTOM]?.value) {
-        const priceInWei = Number(gasPricesAvailable[CUSTOM].value.amount);
-        const minGasPriceSlow = gasPricesAvailable[SLOW]
-          ? Number(gasPricesAvailable[SLOW].value.amount)
-          : Number(gasPricesAvailable[FAST].value.amount);
-        const maxGasPriceFast = Number(gasPricesAvailable[FAST].value.amount);
+      } else if (gasPricesAvailable?.[GasSpeedOptions.CUSTOM]?.value) {
+        const priceInWei = Number(
+          gasPricesAvailable[GasSpeedOptions.CUSTOM].value.amount
+        );
+        const minGasPriceSlow = gasPricesAvailable[GasSpeedOptions.SLOW]
+          ? Number(gasPricesAvailable[GasSpeedOptions.SLOW].value.amount)
+          : Number(gasPricesAvailable[GasSpeedOptions.FAST].value.amount);
+        const maxGasPriceFast = Number(
+          gasPricesAvailable[GasSpeedOptions.FAST].value.amount
+        );
         if (priceInWei < minGasPriceSlow) {
           timeSymbol = '>';
         } else if (priceInWei > maxGasPriceFast) {
@@ -330,8 +325,8 @@ const GasSpeedButton = ({
     formatAnimatedGasPrice,
     gasPrice,
     gasPricesAvailable,
+    gasSpeedOption,
     selectedGasPrice,
-    selectedGasPriceOption,
     type,
   ]);
 
@@ -378,7 +373,10 @@ const GasSpeedButton = ({
       return;
     }
 
-    const minKey = options?.indexOf(SLOW) !== -1 ? SLOW : NORMAL;
+    const minKey =
+      options?.indexOf(GasSpeedOptions.SLOW) !== -1
+        ? GasSpeedOptions.SLOW
+        : GasSpeedOptions.NORMAL;
 
     const minGasPriceAllowed = Number(
       gasPricesAvailable?.[minKey]?.value?.amount || 0
@@ -447,7 +445,7 @@ const GasSpeedButton = ({
   ]);
 
   const focusOnInput = useCallback(() => inputRef.current?.focus(), []);
-  const isCustom = selectedGasPriceOption === CUSTOM ? true : false;
+  const isCustom = gasSpeedOption === GasSpeedOptions.CUSTOM;
 
   const { navigate } = useNavigation();
 
@@ -561,7 +559,7 @@ const GasSpeedButton = ({
       >
         <Row align="end" justify="end" marginBottom={1}>
           <GasSpeedLabelPager
-            label={selectedGasPriceOption}
+            label={gasSpeedOption}
             options={options}
             showPager={!inputFocused}
             theme={theme}

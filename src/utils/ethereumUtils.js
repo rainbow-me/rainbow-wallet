@@ -41,7 +41,7 @@ import logger from 'logger';
 
 const { RNBip39 } = NativeModules;
 
-const getAsset = (assets, address = 'eth') =>
+const getAsset = (assets, address = ETH_ADDRESS) =>
   find(assets, matchesProperty('address', toLower(address)));
 
 const getAssetPrice = (address = ETH_ADDRESS) => {

@@ -1,14 +1,16 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import usePrevious from './usePrevious';
+import { GasSpeedOption } from '@rainbow-me/entities';
 import {
   gasPricesStartPolling,
   gasPricesStopPolling,
   gasUpdateCustomValues,
   gasUpdateDefaultGasLimit,
-  gasUpdateGasPriceOption,
+  gasUpdateGasSpeedOption,
   gasUpdateTxFee,
 } from '@rainbow-me/redux/gas';
+import { AppState } from '@rainbow-me/redux/store';
 
 export default function useGas() {
   const dispatch = useDispatch();
@@ -18,17 +20,17 @@ export default function useGas() {
       gas: {
         gasLimit,
         gasPrices,
+        gasSpeedOption,
         isSufficientGas,
         selectedGasPrice,
-        selectedGasPriceOption,
         txFees,
       },
-    }) => ({
+    }: AppState) => ({
       gasLimit,
       gasPrices,
+      gasSpeedOption,
       isSufficientGas,
       selectedGasPrice,
-      selectedGasPriceOption,
       txFees,
     })
   );
@@ -45,23 +47,25 @@ export default function useGas() {
   );
 
   const updateDefaultGasLimit = useCallback(
-    defaultGasLimit => dispatch(gasUpdateDefaultGasLimit(defaultGasLimit)),
+    (defaultGasLimit: number) =>
+      dispatch(gasUpdateDefaultGasLimit(defaultGasLimit)),
     [dispatch]
   );
 
-  const updateGasPriceOption = useCallback(
-    option => dispatch(gasUpdateGasPriceOption(option)),
+  const updateGasSpeedOption = useCallback(
+    (option: GasSpeedOption) => dispatch(gasUpdateGasSpeedOption(option)),
     [dispatch]
   );
 
   const updateTxFee = useCallback(
-    (newGasLimit, overrideGasOption) => {
+    (newGasLimit: string | number, overrideGasOption?: GasSpeedOption) => {
       dispatch(gasUpdateTxFee(newGasLimit, overrideGasOption));
     },
     [dispatch]
   );
+
   const updateCustomValues = useCallback(
-    (price, estimate) => dispatch(gasUpdateCustomValues(price, estimate)),
+    (price: string) => dispatch(gasUpdateCustomValues(price)),
     [dispatch]
   );
 
@@ -71,7 +75,7 @@ export default function useGas() {
     stopPollingGasPrices,
     updateCustomValues,
     updateDefaultGasLimit,
-    updateGasPriceOption,
+    updateGasSpeedOption,
     updateTxFee,
     ...gasData,
   };
