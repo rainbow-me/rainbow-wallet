@@ -12,13 +12,13 @@ import { ImgixImage } from '@rainbow-me/images';
 import { borders } from '@rainbow-me/styles';
 
 const ChainIcon = styled(ImgixImage)`
-  height: 40;
+  height: ${({ large }) => (large ? 60 : 40)};
   margin-top: 1;
-  width: 40;
+  width: ${({ large }) => (large ? 60 : 40)};
 `;
 
 const IndicatorIconContainer = styled(Centered)`
-  ${borders.buildCircle(40)};
+  ${({ large }) => borders.buildCircle(large ? 60 : 40)};
   bottom: ${({ badgeYPosition }) => badgeYPosition || -4};
   left: ${({ badgeXPosition }) => badgeXPosition || 2};
   position: absolute;
@@ -28,6 +28,7 @@ export default function ChainBadge({
   assetType,
   badgeYPosition,
   badgeXPosition,
+  large = false,
 }) {
   const { isDarkMode } = useTheme();
   const source = useMemo(() => {
@@ -48,8 +49,9 @@ export default function ChainBadge({
     <IndicatorIconContainer
       badgeXPosition={badgeXPosition}
       badgeYPosition={badgeYPosition}
+      large={large}
     >
-      <ChainIcon source={source} />
+      <ChainIcon large={large} source={source} />
     </IndicatorIconContainer>
   );
 }
