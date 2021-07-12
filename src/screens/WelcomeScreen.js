@@ -1,6 +1,6 @@
 import MaskedView from '@react-native-community/masked-view';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { IS_TESTING } from 'react-native-dotenv';
 import Reanimated, {
   Clock,
@@ -96,6 +96,7 @@ const Shadow = styled(Reanimated.View)`
   left: -3;
   position: absolute;
   top: -3;
+  opacity: 0.5;
   width: 236;
 `;
 
@@ -104,7 +105,8 @@ const RainbowButton = ({
   emoji,
   height,
   onPress,
-  shadowStyle,
+  shadowStyle1,
+  shadowStyle2,
   style,
   textColor,
   text,
@@ -118,7 +120,22 @@ const RainbowButton = ({
       {...props}
     >
       {ios && <DarkShadow style={darkShadowStyle} />}
-      {ios && <Shadow style={shadowStyle} />}
+      {ios && (
+        <Shadow
+          style={[
+            shadowStyle1,
+            { transform: [{ translateY: 1 }, { translateX: 1 }] },
+          ]}
+        />
+      )}
+      {ios && (
+        <Shadow
+          style={[
+            shadowStyle2,
+            { transform: [{ translateY: -1 }, { translateX: -1 }] },
+          ]}
+        />
+      )}
       <ButtonContainer height={height} style={style}>
         <ButtonContent>
           <ButtonEmoji name={emoji} />
@@ -138,7 +155,7 @@ const Container = styled.View`
 
 const ContentWrapper = styled(Animated.View)`
   align-items: center;
-  height: 192;
+  height: 218;
   justify-content: space-between;
   margin-bottom: 20;
   z-index: 10;
@@ -146,6 +163,33 @@ const ContentWrapper = styled(Animated.View)`
 
 const ButtonWrapper = styled(Animated.View)`
   width: 100%;
+`;
+
+const MetamaskText = styled(Text).attrs(({ theme: { colors } }) => ({
+  align: 'center',
+  color: colors.alpha(colors.blueGreyDark, 0.5),
+  lineHeight: 'looser',
+  size: 'small',
+  weight: 'bold',
+}))`
+  padding-top: 6;
+`;
+
+const WatchWalletText = styled(Text).attrs(({ theme: { colors } }) => ({
+  align: 'center',
+  color: colors.alpha(colors.blueGreyDark, 0.5),
+  lineHeight: 'looser',
+  size: 'medium',
+  weight: 'bold',
+}))``;
+
+const WatchWalletWrapper = styled(ButtonPressAnimation)`
+  position: absolute;
+  bottom: 40px;
+  background-color: ${({ theme: { colors } }) =>
+    colors.alpha(colors.blueGreyDark, 0.06)};
+  padding: 6px 20px;
+  border-radius: 28px;
 `;
 
 const INITIAL_SIZE = 375;
@@ -307,13 +351,40 @@ function runTiming(value) {
 }
 
 /* eslint-disable sort-keys */
-const colorsRGB = [
+const colorsRGB1 = [
   { r: 255, g: 73, b: 74 },
   { r: 255, g: 170, b: 0 },
   { r: 0, g: 222, b: 111 },
   { r: 0, g: 163, b: 217 },
   { r: 115, g: 92, b: 255 },
 ];
+
+// const colorsRGB2s = [
+//   { r: 255, g: 73, b: 74 },
+//   { r: 255, g: 170, b: 0 },
+//   { r: 0, g: 222, b: 111 },
+//   { r: 0, g: 163, b: 217 },
+//   { r: 115, g: 92, b: 255 },
+// ];
+
+const colorsRGB2 = colorsRGB1.map(({ r, g, b }) => ({
+  r,
+  g: Math.max(g - 20, 0),
+  b: Math.min(b + 20, 255),
+}));
+
+const colorsRGB3 = colorsRGB1.map(({ r, g, b }) => ({
+  r,
+  b: Math.max(b - 20, 0),
+  g: Math.min(g + 20, 255),
+}));
+// const colorsRGB3 = [
+//   { r: 255, g: 73, b: 74 },
+//   { r: 255, g: 170, b: 0 },
+//   { r: 0, g: 222, b: 111 },
+//   { r: 0, g: 163, b: 217 },
+//   { r: 115, g: 92, b: 255 },
+// ];
 /* eslint-enable sort-keys */
 
 const colorRGB = (r, g, b) => color(round(r), round(g), round(b));
@@ -325,7 +396,7 @@ const springConfig = {
   useNativeDriver: true,
 };
 
-function colorAnimation(rValue, fromShadow) {
+const colorAnimationFactory = colorsRGB => (rValue, fromShadow) => {
   const animation = runTiming(rValue.current);
   const r = interpolate(animation, {
     inputRange: [0, 1, 2, 3, 4, 5],
@@ -342,7 +413,11 @@ function colorAnimation(rValue, fromShadow) {
     outputRange: [...colorsRGB.map(({ b }) => b), colorsRGB[0].b],
   });
   return colorRGB(r, g, b, fromShadow);
-}
+};
+
+const colorAnimation = colorAnimationFactory(colorsRGB1);
+const colorAnimation2 = colorAnimationFactory(colorsRGB2);
+const colorAnimation3 = colorAnimationFactory(colorsRGB3);
 
 export default function WelcomeScreen() {
   const { colors } = useTheme();
@@ -440,7 +515,13 @@ export default function WelcomeScreen() {
   const rValue = useValue(0);
 
   const backgroundColor = useMemoOne(() => colorAnimation(rValue, false), []);
+  const backgroundColor2 = useMemoOne(() => colorAnimation2(rValue, false), []);
+  const backgroundColor3 = useMemoOne(() => colorAnimation3(rValue, false), []);
 
+  const openImportSheet = useCallback(
+    () => navigate(Routes.IMPORT_SEED_PHRASE_FLOW),
+    [navigate]
+  );
   const onCreateWallet = useCallback(async () => {
     const operation = dangerouslyGetState().index === 1 ? navigate : replace;
     operation(Routes.SWIPE_LAYOUT, {
@@ -452,10 +533,14 @@ export default function WelcomeScreen() {
   const createWalletButtonProps = useMemoOne(() => {
     const color = colorAnimation(rValue, true);
     return {
-      emoji: 'castle',
+      emoji: 'gem_stone',
       height: 54 + (ios ? 0 : 6),
-      shadowStyle: {
-        backgroundColor: backgroundColor,
+      shadowStyle1: {
+        backgroundColor: backgroundColor2,
+        shadowColor: color,
+      },
+      shadowStyle2: {
+        backgroundColor: backgroundColor3,
         shadowColor: color,
       },
       style: {
@@ -489,14 +574,20 @@ export default function WelcomeScreen() {
         backgroundColor: colors.blueGreyDarkLight,
         width: 248,
       },
-      text: 'I already have one',
+      text: 'Import a wallet',
       textColor: colors.alpha(colors.blueGreyDark, 0.8),
     };
   }, [rValue]);
 
-  const textStyle = useMemoOne(() => {
+  const textStyle2 = useMemoOne(() => {
     return {
-      backgroundColor,
+      backgroundColor: backgroundColor2,
+    };
+  }, [rValue]);
+
+  const textStyle3 = useMemoOne(() => {
+    return {
+      backgroundColor: backgroundColor3,
     };
   }, [rValue]);
 
@@ -519,9 +610,26 @@ export default function WelcomeScreen() {
         {android && IS_TESTING === 'true' ? (
           <RainbowText colors={colors} />
         ) : (
-          <MaskedView maskElement={<RainbowText colors={colors} />}>
-            <RainbowTextMask style={textStyle} />
-          </MaskedView>
+          <>
+            <View style={{ height: 37, width: 130 }}>
+              <MaskedView
+                maskElement={<RainbowText colors={colors} />}
+                style={{ opacity: 0.5, position: 'absolute' }}
+              >
+                <RainbowTextMask style={textStyle2} />
+              </MaskedView>
+              <MaskedView
+                maskElement={<RainbowText colors={colors} />}
+                style={{
+                  opacity: 0.5,
+                  position: 'absolute',
+                  transform: [{ translateX: 1.5 }, { translateY: 1.5 }],
+                }}
+              >
+                <RainbowTextMask style={textStyle3} />
+              </MaskedView>
+            </View>
+          </>
         )}
 
         <ButtonWrapper style={buttonStyle}>
@@ -537,8 +645,14 @@ export default function WelcomeScreen() {
             {...existingWalletButtonProps}
             testID="already-have-wallet-button"
           />
+          <MetamaskText>🦊 from MetaMask and more</MetamaskText>
         </ButtonWrapper>
       </ContentWrapper>
+      <WatchWalletWrapper>
+        <WatchWalletText onPress={openImportSheet}>
+          􀊫 Watch an address
+        </WatchWalletText>
+      </WatchWalletWrapper>
     </Container>
   );
 }
