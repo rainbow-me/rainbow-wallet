@@ -1,6 +1,7 @@
 import qs from 'qs';
 import { Alert } from 'react-native';
 import URL from 'url-parse';
+import { walletConnectPair } from '../model/walletConnect';
 import store from '../redux/store';
 import {
   walletConnectOnSessionRequest,
@@ -44,15 +45,17 @@ function handleWalletConnect(uri) {
   dispatch(walletConnectSetPendingRedirect());
   const { query } = new URL(uri);
   if (uri && query) {
-    dispatch(
-      walletConnectOnSessionRequest(uri, (status, dappScheme) => {
-        if (status === 'reject') {
-          dispatch(walletConnectRemovePendingRedirect('reject', dappScheme));
-        } else {
-          dispatch(walletConnectRemovePendingRedirect('connect', dappScheme));
-        }
-      })
-    );
+    console.log('walletConnectPair', uri);
+    walletConnectPair(uri);
+    // dispatch(
+    // walletConnectOnSessionRequest(uri, (status, dappScheme) => {
+    //   if (status === 'reject') {
+    //     dispatch(walletConnectRemovePendingRedirect('reject', dappScheme));
+    //   } else {
+    //     dispatch(walletConnectRemovePendingRedirect('connect', dappScheme));
+    //   }
+    // })
+    // );
   } else {
     // This is when we get focused by WC due to a signing request
   }
