@@ -88,14 +88,18 @@ export default function WalletConnectApprovalSheet() {
   const handled = useRef(false);
 
   const [scam, setScam] = useState(false);
-  const [approvalNetwork, setApprovalNetwork] = useState(network);
+
+  const [approvalNetwork, setApprovalNetwork] = useState(
+    (params?.chainId &&
+      ethereumUtils.getNetworkFromChainId(Number(params.chainId))) ||
+      network
+  );
   const [approvalAccount, setApprovalAccount] = useState({
     address: accountAddress,
     wallet: selectedWallet,
   });
 
   const type = params?.type || WalletConnectApprovalSheetType.connect;
-  const chainId = params?.chainId || 1;
   const meta = params?.meta || {};
   const { dappName, dappUrl, imageUrl } = meta;
   const callback = params?.callback;
@@ -260,9 +264,7 @@ export default function WalletConnectApprovalSheet() {
               </Text>{' '}
               {type === WalletConnectApprovalSheetType.connect
                 ? `wants to connect to your wallet`
-                : `wants to connect to the ${ethereumUtils.getNetworkNameFromChainId(
-                    chainId
-                  )} network`}
+                : `wants to connect to the ${approvalNetworkInfo.name} network`}
             </Text>
           </Row>
         </Centered>
