@@ -1,4 +1,5 @@
 import React from 'react';
+import FastImage from 'react-native-fast-image';
 import styled from 'styled-components';
 import ArbitrumBadge from '../../assets/badges/arbitrumBadge.png';
 import ArbitrumBadgeDark from '../../assets/badges/arbitrumBadgeDark.png';
@@ -8,17 +9,28 @@ import PolygonBadge from '../../assets/badges/polygonBadge.png';
 import PolygonBadgeDark from '../../assets/badges/polygonBadgeDark.png';
 import { Centered } from '../layout';
 import { AssetType } from '@rainbow-me/entities';
-import { ImgixImage } from '@rainbow-me/images';
 import { borders } from '@rainbow-me/styles';
 
-const ChainIcon = styled(ImgixImage)`
-  height: ${({ large }) => (large ? 60 : 40)};
+const sizeConfigs = {
+  large: {
+    iconSize: 60,
+  },
+  medium: {
+    iconSize: 45,
+  },
+  small: {
+    iconSize: 40,
+  },
+};
+
+const ChainIcon = styled(FastImage)`
+  height: ${({ iconSize }) => iconSize};
   margin-top: 1;
-  width: ${({ large }) => (large ? 60 : 40)};
+  width: ${({ iconSize }) => iconSize};
 `;
 
 const IndicatorIconContainer = styled(Centered)`
-  ${({ large }) => borders.buildCircle(large ? 60 : 40)};
+  ${({ iconSize }) => borders.buildCircle(iconSize)};
   bottom: ${({ badgeYPosition }) => badgeYPosition || -4};
   left: ${({ badgeXPosition }) => badgeXPosition || 2};
   position: absolute;
@@ -28,9 +40,12 @@ export default function ChainBadge({
   assetType,
   badgeYPosition,
   badgeXPosition,
-  large = false,
+  size = 'small',
 }) {
   const { isDarkMode } = useTheme();
+
+  const { iconSize } = sizeConfigs[size];
+
   const source = useMemo(() => {
     let val = null;
     if (assetType === AssetType.arbitrum) {
@@ -49,9 +64,9 @@ export default function ChainBadge({
     <IndicatorIconContainer
       badgeXPosition={badgeXPosition}
       badgeYPosition={badgeYPosition}
-      large={large}
+      iconSize={iconSize}
     >
-      <ChainIcon large={large} source={source} />
+      <ChainIcon iconSize={iconSize} source={source} />
     </IndicatorIconContainer>
   );
 }
