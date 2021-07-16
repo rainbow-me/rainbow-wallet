@@ -1,5 +1,6 @@
 import { captureException } from '@sentry/react-native';
 import { sortBy } from 'lodash';
+import { Alert } from 'react-native';
 import RNCloudFs from 'react-native-cloud-fs';
 import { RAINBOW_MASTER_KEY } from 'react-native-dotenv';
 import RNFS from 'react-native-fs';
@@ -39,6 +40,16 @@ export async function deleteAllBackups() {
       await RNCloudFs.deleteFromCloud(file);
     })
   );
+}
+
+export async function fetchAllBackups() {
+  if (android) {
+    await RNCloudFs.loginIfNeeded();
+  }
+  return RNCloudFs.listFiles({
+    scope: 'hidden',
+    targetPath: REMOTE_BACKUP_WALLET_DIR,
+  });
 }
 
 export async function encryptAndSaveDataToCloud(data, password, filename) {
@@ -102,6 +113,13 @@ function getGoogleDriveDocument(id) {
   return RNCloudFs.getGoogleDriveDocument(id);
 }
 
+export function syncCloud() {
+  if (ios) {
+    return RNCloudFs.syncCloud();
+  }
+  return true;
+}
+
 export async function getDataFromCloud(backupPassword, filename = null) {
   if (android) {
     await RNCloudFs.loginIfNeeded();
@@ -117,6 +135,15 @@ export async function getDataFromCloud(backupPassword, filename = null) {
     const error = new Error(CLOUD_BACKUP_ERRORS.NO_BACKUPS_FOUND);
     captureException(error);
     throw error;
+  }
+  if (!backups.files.find(file => file.uri !== null)) {
+    Alert.alert(
+      'Error syncing with iCloud',
+      `There was an error while fetching your backups information. Please make sure that you are logged into iCloud under Settings => Apple Id .
+      
+      If the problem persists please reach out to support@rainbow.me`
+    );
+    return;
   }
 
   let document;
