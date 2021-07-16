@@ -1,4 +1,4 @@
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import { Column, Row } from '../layout';
 import { AnimatedNumber, Text } from '../text';
 import GasSpeedLabelPager from './GasSpeedLabelPager';
 import ExchangeModalTypes from '@rainbow-me/helpers/exchangeModalTypes';
+import networkTypes from '@rainbow-me/helpers/networkTypes';
 import { useAccountSettings, useGas } from '@rainbow-me/hooks';
 import { useNavigation } from '@rainbow-me/navigation';
 import { gweiToWei, weiToGwei } from '@rainbow-me/parsers';
@@ -115,12 +116,6 @@ const BottomRightLabel = ({ formatter, theme }) => {
   );
 };
 
-const formatGasPrice = (gasPrice, nativeCurrency) => {
-  return nativeCurrency === 'ETH'
-    ? (Math.ceil(Number(gasPrice) * 10000) / 10000).toFixed(4)
-    : (Math.ceil(Number(gasPrice) * 100) / 100).toFixed(2);
-};
-
 const getActionLabel = type => {
   switch (type) {
     case ExchangeModalTypes.deposit:
@@ -149,10 +144,10 @@ const GasSpeedButton = ({
   topPadding = 15,
   options = null,
   minGasPrice = null,
+  currentNetwork,
 }) => {
   const { colors } = useTheme();
   const inputRef = useRef(null);
-  const { nativeCurrencySymbol, nativeCurrency } = useAccountSettings();
   const {
     gasPrices,
     updateCustomValues,
@@ -175,7 +170,7 @@ const GasSpeedButton = ({
     return filteredGasPrices;
   }, [gasPrices, minGasPrice, options]);
 
-  const gasPrice = get(selectedGasPrice, 'txFee.native.value.amount');
+  const gasPrice = get(selectedGasPrice, 'txFee.native.value.display');
   const customGasPriceTimeEstimateHandler = useRef(null);
   useEffect(() => {
     listener = () => {
@@ -191,18 +186,43 @@ const GasSpeedButton = ({
   const [estimatedTimeValue, setEstimatedTimeValue] = useState(0);
   const [estimatedTimeUnit, setEstimatedTimeUnit] = useState('min');
   const [inputFocused, setInputFocused] = useState(false);
+  const { nativeCurrencySymbol, nativeCurrency } = useAccountSettings();
 
   const defaultCustomGasPrice = Math.round(
     weiToGwei(gasPricesAvailable?.fast?.value?.amount)
   );
-  const defaultCustomGasPriceUsd = get(
+  const defaultCustomGasPriceNative = get(
     txFees?.fast,
-    'txFee.native.value.amount'
+    'txFee.native.value.display'
   );
   const defaultCustomGasConfirmationTime =
     gasPricesAvailable?.fast?.estimatedTime?.display;
 
-  const price = isNaN(gasPrice) ? '0.00' : gasPrice;
+  // Because of the animated number component
+  // we need to trim the native currency symbol
+  // (and leave the number only!)
+  // which gets added later in the formatGasPrice function
+  const price = (isNil(gasPrice) ? '0.00' : gasPrice)
+    .replace(nativeCurrencySymbol, '')
+    .trim();
+
+  const formatGasPrice = useCallback(
+    animatedValue => {
+      // Polygon is way too cheap, so we need to add more decimals
+      if (currentNetwork === networkTypes.polygon) {
+        return `${nativeCurrencySymbol}${(
+          Math.ceil(Number(animatedValue) * 1000000) / 1000000
+        ).toFixed(6)}`;
+      } else {
+        return `${nativeCurrencySymbol}${
+          nativeCurrency === 'ETH'
+            ? (Math.ceil(Number(animatedValue) * 10000) / 10000).toFixed(4)
+            : (Math.ceil(Number(animatedValue) * 100) / 100).toFixed(2)
+        }`;
+      }
+    },
+    [currentNetwork, nativeCurrencySymbol, nativeCurrency]
+  );
 
   useEffect(() => {
     const estimatedTime = get(
@@ -218,14 +238,14 @@ const GasSpeedButton = ({
   const calculateCustomPriceEstimatedTime = useCallback(
     async price => {
       try {
-        await updateCustomValues(price);
-        updateGasPriceOption(CUSTOM);
+        await updateCustomValues(price, currentNetwork);
+        updateGasPriceOption(CUSTOM, currentNetwork);
       } catch (e) {
         setEstimatedTimeValue(0);
         setEstimatedTimeUnit('min');
       }
     },
-    [updateCustomValues, updateGasPriceOption]
+    [currentNetwork, updateCustomValues, updateGasPriceOption]
   );
 
   useEffect(() => {
@@ -278,23 +298,18 @@ const GasSpeedButton = ({
     updateGasPriceOption(nextSpeed);
   }, [inputFocused, options, selectedGasPriceOption, updateGasPriceOption]);
 
-  const formatAnimatedGasPrice = useCallback(
-    animatedPrice =>
-      `${nativeCurrencySymbol}${formatGasPrice(animatedPrice, nativeCurrency)}`,
-    [nativeCurrencySymbol, nativeCurrency]
-  );
-
   const formatBottomRightLabel = useCallback(() => {
     const actionLabel = getActionLabel(type);
     const time = parseFloat(estimatedTimeValue || 0).toFixed(0);
-    const gasPriceGwei = get(selectedGasPrice, 'value.display');
+    let gasPriceGwei = get(selectedGasPrice, 'value.display');
+    if (gasPriceGwei === '0 Gwei') {
+      gasPriceGwei = '< 1 Gwei';
+    }
     let timeSymbol = '~';
 
     if (selectedGasPriceOption === CUSTOM) {
       if (!customGasPriceInput) {
-        return `${formatAnimatedGasPrice(
-          defaultCustomGasPriceUsd
-        )} ~ ${defaultCustomGasConfirmationTime}`;
+        return `${defaultCustomGasPriceNative} ~ ${defaultCustomGasConfirmationTime}`;
       } else if (gasPricesAvailable[CUSTOM]?.value) {
         const priceInWei = Number(gasPricesAvailable[CUSTOM].value.amount);
         const minGasPriceSlow = gasPricesAvailable[SLOW]
@@ -307,9 +322,7 @@ const GasSpeedButton = ({
           timeSymbol = '<';
         }
 
-        return `${formatAnimatedGasPrice(
-          gasPrice
-        )} ${timeSymbol} ${time} ${estimatedTimeUnit}`;
+        return `${gasPrice} ${timeSymbol} ${time} ${estimatedTimeUnit}`;
       } else {
         return `${actionLabel} ...`;
       }
@@ -324,10 +337,9 @@ const GasSpeedButton = ({
   }, [
     customGasPriceInput,
     defaultCustomGasConfirmationTime,
-    defaultCustomGasPriceUsd,
+    defaultCustomGasPriceNative,
     estimatedTimeUnit,
     estimatedTimeValue,
-    formatAnimatedGasPrice,
     gasPrice,
     gasPricesAvailable,
     selectedGasPrice,
@@ -470,7 +482,7 @@ const GasSpeedButton = ({
             <ButtonPressAnimation onPress={handlePress} reanimatedButton>
               <View pointerEvents="none">
                 <AnimatedNumber
-                  formatter={formatAnimatedGasPrice}
+                  formatter={formatGasPrice}
                   interval={6}
                   renderContent={renderGasPriceText}
                   steps={6}
